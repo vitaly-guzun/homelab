@@ -112,6 +112,15 @@ Tailscale Kubernetes Operator and should be used for large uploads that exceed
 Cloudflare's request-body limit. Funnel is not enabled, so the endpoint is not
 publicly reachable.
 
+The preferred private custom-domain endpoint is
+`https://audiobooks.vitalyguzun.com/`. Public DNS maps this name to the
+Tailscale IP of the `homelab-gateway` service, so the DNS record is visible
+publicly but the service itself remains reachable only from the tailnet.
+Traefik obtains and renews the certificate with a Let's Encrypt DNS-01
+challenge through Vercel DNS. The legacy `.ts.net` endpoint and Cloudflare
+Tunnel remain available during migration and can be removed after the custom
+domain has been verified from every client.
+
 ## Linkding backups
 
 The `linkding-backup` CronJob runs every day at 03:15 in the

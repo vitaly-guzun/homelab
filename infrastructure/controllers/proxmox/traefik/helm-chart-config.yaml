@@ -1,0 +1,43 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    # Keep ACME account data and certificates across Traefik restarts.
+    persistence:
+      enabled: true
+      accessMode: ReadWriteOnce
+      size: 128Mi
+      storageClass: local-path
+      path: /data
+
+    # The default Traefik container runs as UID/GID 65532. fsGroup makes the
+    # local-path volume writable without running Traefik as root.
+    podSecurityContext:
+      runAsGroup: 65532
+      runAsNonRoot: true
+      runAsUser: 65532
+      fsGroup: 65532
+      fsGroupChangePolicy: OnRootMismatch
+
+    certificatesResolvers:
+      letsencrypt:
+        acme:
+          email: vitaly.guzun@gmail.com
+          storage: /data/acme.json
+          dnsChallenge:
+            provider: vercel
+            resolvers:
+              - 1.1.1.1:53
+              - 8.8.8.8:53
+
+    env:
+      - name: VERCEL_API_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: traefik-vercel-api-token
+            key: api-token
+      - name: VERCEL_TEAM_ID
+        value: team_AvfbOQ6yYT1xK4fG9iKnUcgr
