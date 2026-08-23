@@ -80,6 +80,7 @@ flowchart LR
         Linkding["Linkding"] -->|"application data"| LinkdingPVC["Linkding local-path PVC"]
         Backup["Daily backup CronJob<br/>03:15 Europe/Amsterdam"] -->|"reads"| LinkdingPVC
         Audiobookshelf["Audiobookshelf"] -->|"audiobook library over NFS"| AudiobooksNFS["Synology NFS PV"]
+        Grafana["Grafana"]
         Traefik["Traefik private gateway"]
     end
 
@@ -97,6 +98,7 @@ flowchart LR
     Cloudflare --> Audiobookshelf
     Tailscale -->|"private HTTPS and large uploads"| Audiobookshelf
     Tailscale -->|"private HTTPS"| Traefik
+    Traefik --> Grafana
     Traefik --> Jellyfin
     Backup -->|"validated full-backup ZIP"| NFS
     AudiobooksNFS --> Audiobooks
@@ -136,6 +138,13 @@ Kubernetes Service has no selector: its EndpointSlice forwards traffic to the
 reserved Jellyfin LAN address `192.168.1.183:8096`. Public DNS maps the hostname
 to the Tailscale IP of `homelab-gateway`; no router port forwarding or Tailscale
 Funnel is required.
+
+Grafana is exposed through the same private Traefik gateway at
+`https://grafana.vitalyguzun.com/`. Public DNS must map this hostname to the
+Tailscale IP of `homelab-gateway`. Traefik terminates HTTPS with a certificate
+obtained through the existing Let's Encrypt DNS-01 resolver. The custom-domain
+endpoint is reachable only from authorized tailnet clients; the existing local
+hostname and Cloudflare Tunnel remain available as fallback routes.
 
 ## Linkding backups
 

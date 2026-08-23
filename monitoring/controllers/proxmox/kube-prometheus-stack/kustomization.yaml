@@ -6,6 +6,7 @@ resources:
   - cloudflare.yaml
   - cloudflare-secret.yaml
   - grafana-admin-secret.yaml
+  - traefik-ingress.yaml
 patches:
   - target:
       group: helm.toolkit.fluxcd.io
