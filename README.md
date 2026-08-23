@@ -17,6 +17,7 @@ Flux continuously reconciles the desired state from the `main` branch.
 ## Applications
 
 - [Audiobookshelf](https://www.audiobookshelf.org/) — audiobook and e-book server
+- [Jellyfin](https://jellyfin.org/) — media server running in a dedicated LXC
 - [Linkding](https://linkding.link/) — bookmark manager
 - [Linkding backups](apps/proxmox/linkding/BACKUP.md) — daily full backups to
   Synology over NFS
@@ -32,6 +33,7 @@ Flux continuously reconciles the desired state from the `main` branch.
 │   ├── base/                       # Reusable application manifests
 │   └── proxmox/                    # Proxmox application overlays
 │       ├── audiobookshelf/
+│       ├── jellyfin/               # Private gateway to the Jellyfin LXC
 │       └── linkding/               # Linkding overlay and backup CronJob
 ├── clusters/
 │   └── proxmox/                    # Flux entry point for the cluster
@@ -78,6 +80,11 @@ flowchart LR
         Linkding["Linkding"] -->|"application data"| LinkdingPVC["Linkding local-path PVC"]
         Backup["Daily backup CronJob<br/>03:15 Europe/Amsterdam"] -->|"reads"| LinkdingPVC
         Audiobookshelf["Audiobookshelf"] -->|"audiobook library over NFS"| AudiobooksNFS["Synology NFS PV"]
+        Traefik["Traefik private gateway"]
+    end
+
+    subgraph Proxmox["Proxmox host"]
+        Jellyfin["Jellyfin LXC<br/>192.168.1.183:8096"]
     end
 
     subgraph NAS["Synology NAS — 192.168.1.59"]
@@ -89,6 +96,8 @@ flowchart LR
     Cloudflare --> Linkding
     Cloudflare --> Audiobookshelf
     Tailscale -->|"private HTTPS and large uploads"| Audiobookshelf
+    Tailscale -->|"private HTTPS"| Traefik
+    Traefik --> Jellyfin
     Backup -->|"validated full-backup ZIP"| NFS
     AudiobooksNFS --> Audiobooks
 ```
@@ -120,6 +129,13 @@ Traefik obtains and renews the certificate with a Let's Encrypt DNS-01
 challenge through Vercel DNS. The legacy `.ts.net` endpoint and Cloudflare
 Tunnel remain available during migration and can be removed after the custom
 domain has been verified from every client.
+
+Jellyfin remains in its dedicated LXC and is exposed to the tailnet through
+the same private Traefik gateway at `https://jellyfin.vitalyguzun.com/`. The
+Kubernetes Service has no selector: its EndpointSlice forwards traffic to the
+reserved Jellyfin LAN address `192.168.1.183:8096`. Public DNS maps the hostname
+to the Tailscale IP of `homelab-gateway`; no router port forwarding or Tailscale
+Funnel is required.
 
 ## Linkding backups
 
