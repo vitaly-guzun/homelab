@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: navidrome-config
+data:
+  ND_MUSICFOLDER: /music
+  ND_DATAFOLDER: /data
+  ND_LOGLEVEL: info
+  TZ: Europe/Amsterdam

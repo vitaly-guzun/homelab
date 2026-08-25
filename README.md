@@ -19,6 +19,7 @@ Flux continuously reconciles the desired state from the `main` branch.
 - [Audiobookshelf](https://www.audiobookshelf.org/) — audiobook and e-book server
 - [Jellyfin](https://jellyfin.org/) — media server running in a dedicated LXC
 - [Linkding](https://linkding.link/) — bookmark manager
+- [Navidrome](https://www.navidrome.org/) — private music streaming server
 - [Linkding backups](apps/proxmox/linkding/BACKUP.md) — daily full backups to
   Synology over NFS
 - [Synology media automation](synology/media-automation/README.md) — Seerr,
@@ -34,7 +35,8 @@ Flux continuously reconciles the desired state from the `main` branch.
 │   └── proxmox/                    # Proxmox application overlays
 │       ├── audiobookshelf/
 │       ├── jellyfin/               # Private gateway to the Jellyfin LXC
-│       └── linkding/               # Linkding overlay and backup CronJob
+│       ├── linkding/                # Linkding overlay and backup CronJob
+│       └── navidrome/               # Private Navidrome ingress
 ├── clusters/
 │   └── proxmox/                    # Flux entry point for the cluster
 ├── infrastructure/
@@ -80,6 +82,7 @@ flowchart LR
         Linkding["Linkding"] -->|"application data"| LinkdingPVC["Linkding local-path PVC"]
         Backup["Daily backup CronJob<br/>03:15 Europe/Amsterdam"] -->|"reads"| LinkdingPVC
         Audiobookshelf["Audiobookshelf"] -->|"audiobook library over NFS"| AudiobooksNFS["Synology NFS PV"]
+        Navidrome["Navidrome"] -->|"music library over read-only NFS"| MusicNFS["Synology NFS PV"]
         Grafana["Grafana"]
         Traefik["Traefik private gateway"]
     end
@@ -92,6 +95,7 @@ flowchart LR
         NFS["NFS export /volume1/backups<br/>archives under linkding/"]
         Media["Container Manager<br/>Seerr + Radarr + Sonarr + Prowlarr + qBittorrent"]
         Audiobooks["/volume1/media/audiobooks"]
+        Music["/volume1/media/music"]
     end
 
     Cloudflare --> Linkding
@@ -100,8 +104,10 @@ flowchart LR
     Tailscale -->|"private HTTPS"| Traefik
     Traefik --> Grafana
     Traefik --> Jellyfin
+    Traefik --> Navidrome
     Backup -->|"validated full-backup ZIP"| NFS
     AudiobooksNFS --> Audiobooks
+    MusicNFS --> Music
 ```
 
 Linkding's application data is stored on a `local-path` `ReadWriteOnce` PVC.
@@ -145,6 +151,12 @@ Tailscale IP of `homelab-gateway`. Traefik terminates HTTPS with a certificate
 obtained through the existing Let's Encrypt DNS-01 resolver. The custom-domain
 endpoint is reachable only from authorized tailnet clients; the existing local
 hostname and Cloudflare Tunnel remain available as fallback routes.
+
+Navidrome stores its database and cache on a 10 GiB local-path PVC and mounts
+the Synology music library from `/volume1/media/music` read-only. It is
+available at `https://navidrome.vitalyguzun.com/` through the private Traefik
+gateway. Public DNS must map the hostname to the Tailscale IP of
+`homelab-gateway`; clients must be connected to the tailnet.
 
 ## Linkding backups
 
