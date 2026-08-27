@@ -9,4 +9,4 @@ resources:
   - cloudflare-secret.yaml
 images:
   - name: sissbruecker/linkding
-    newTag: 1.46.1
+    newTag: 1.46.2
