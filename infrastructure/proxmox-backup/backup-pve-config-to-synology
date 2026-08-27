@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+umask 077
+
+readonly storage_id="${PVE_CONFIG_BACKUP_STORAGE_ID:-synology-backup}"
+readonly storage_root="/mnt/pve/${storage_id}"
+readonly backup_dir="${storage_root}/proxmox-pve/config"
+readonly timestamp="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
+readonly archive_name="pve-config-${timestamp}.tar.gz"
+readonly archive_path="${backup_dir}/${archive_name}"
+readonly archive_tmp="${backup_dir}/.${archive_name}.partial"
+readonly checksum_path="${archive_path}.sha256"
+readonly checksum_tmp="${checksum_path}.partial"
+
+work_dir="$(mktemp -d /run/pve-config-backup.XXXXXX)"
+
+cleanup() {
+  if [[ "${work_dir}" == /run/pve-config-backup.* ]]; then
+    rm -rf -- "${work_dir}"
+  fi
+  rm -f -- "${archive_tmp}" "${checksum_tmp}"
+}
+
+notify_failure() {
+  local exit_code="$?"
+  local line_number="$1"
+
+  trap - ERR
+  printf 'The scheduled Proxmox configuration backup failed on %s at line %s.\nCheck: journalctl -u pve-config-backup.service\n' \
+    "$(hostname)" "${line_number}" \
+    | mail -s "[Proxmox] Configuration backup failed on $(hostname)" root \
+    || true
+  exit "${exit_code}"
+}
+
+trap cleanup EXIT
+trap 'notify_failure "$LINENO"' ERR
+
+if ! pvesm status --storage "${storage_id}" \
+  | awk -v storage="${storage_id}" 'NR > 1 && $1 == storage && $3 == "active" { found = 1 } END { exit !found }'; then
+  echo "Backup storage ${storage_id} is not active" >&2
+  false
+fi
+
+install -d -m 0700 "${backup_dir}" "${work_dir}/inventory"
+
+pveversion -v > "${work_dir}/inventory/pveversion.txt"
+pvesm status > "${work_dir}/inventory/storage-status.txt"
+qm list > "${work_dir}/inventory/qm-list.txt"
+pct list > "${work_dir}/inventory/pct-list.txt"
+lsblk -o NAME,TYPE,SIZE,FSTYPE,MOUNTPOINTS > "${work_dir}/inventory/lsblk.txt"
+ip -brief address > "${work_dir}/inventory/ip-addresses.txt"
+
+tar --warning=no-file-changed \
+  -czf "${archive_tmp}" \
+  -C / etc \
+  -C / var/lib/pve-cluster/config.db \
+  -C "${work_dir}" inventory
+
+chmod 0600 "${archive_tmp}"
+mv -- "${archive_tmp}" "${archive_path}"
+
+archive_hash="$(sha256sum "${archive_path}" | awk '{print $1}')"
+printf '%s  %s\n' "${archive_hash}" "${archive_name}" > "${checksum_tmp}"
+chmod 0600 "${checksum_tmp}"
+mv -- "${checksum_tmp}" "${checksum_path}"
+
+mapfile -t archives < <(
+  find "${backup_dir}" -maxdepth 1 -type f -name 'pve-config-*.tar.gz' -printf '%f\n' \
+    | sort -r
+)
+
+declare -A keep=()
+declare -A seen_week=()
+declare -A seen_month=()
+
+for ((index = 0; index < ${#archives[@]} && index < 7; index++)); do
+  keep["${archives[index]}"]=1
+done
+
+weekly_kept=0
+for ((index = 7; index < ${#archives[@]} && weekly_kept < 4; index++)); do
+  archive="${archives[index]}"
+  archive_date="${archive#pve-config-}"
+  archive_date="${archive_date%%T*}"
+  week="$(date -u -d "${archive_date}" +%G-%V)"
+
+  if [[ -z "${seen_week[${week}]:-}" ]]; then
+    keep["${archive}"]=1
+    seen_week["${week}"]=1
+    ((weekly_kept += 1))
+  fi
+done
+
+monthly_kept=0
+for ((index = 7; index < ${#archives[@]} && monthly_kept < 3; index++)); do
+  archive="${archives[index]}"
+  [[ -n "${keep[${archive}]:-}" ]] && continue
+
+  archive_date="${archive#pve-config-}"
+  month="${archive_date:0:7}"
+
+  if [[ -z "${seen_month[${month}]:-}" ]]; then
+    keep["${archive}"]=1
+    seen_month["${month}"]=1
+    ((monthly_kept += 1))
+  fi
+done
+
+for archive in "${archives[@]}"; do
+  if [[ -z "${keep[${archive}]:-}" ]]; then
+    rm -f -- "${backup_dir}/${archive}" "${backup_dir}/${archive}.sha256"
+  fi
+done
+
+logger -t pve-config-backup \
+  "Created ${archive_path} and applied 7 daily / 4 weekly / 3 monthly retention"

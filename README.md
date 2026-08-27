@@ -22,6 +22,8 @@ Flux continuously reconciles the desired state from the `main` branch.
 - [Navidrome](https://www.navidrome.org/) — private music streaming server
 - [Linkding backups](apps/proxmox/linkding/BACKUP.md) — daily full backups to
   Synology over NFS
+- [Proxmox backups](infrastructure/proxmox-backup/README.md) — daily VM, LXC,
+  and host-configuration backups to Synology
 - [Synology media automation](synology/media-automation/README.md) — Seerr,
   Radarr, Sonarr, Prowlarr, and qBittorrent project for media requests and
   imports

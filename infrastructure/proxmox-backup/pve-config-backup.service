@@ -1,0 +1,13 @@
+[Unit]
+Description=Back up the Proxmox host configuration to Synology
+After=network-online.target pve-cluster.service pvestatd.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/backup-pve-config-to-synology
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+TimeoutStartSec=15min
+

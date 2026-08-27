@@ -1,0 +1,12 @@
+[Unit]
+Description=Run the Proxmox host configuration backup every day at 04:30
+
+[Timer]
+OnCalendar=*-*-* 04:30:00
+Persistent=true
+AccuracySec=1min
+Unit=pve-config-backup.service
+
+[Install]
+WantedBy=timers.target
+
