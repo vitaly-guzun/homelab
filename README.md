@@ -3,190 +3,194 @@
 GitOps configuration for a self-hosted Kubernetes cluster running on Proxmox.
 Flux continuously reconciles the desired state from the `main` branch.
 
+This repository is environment-specific rather than a reusable public template:
+the Proxmox overlays contain hostnames, storage paths, and private LAN addresses
+that are required at runtime. These values are infrastructure metadata, not
+authentication credentials. See [Security and address disclosure](SECURITY.md)
+before publishing or copying the configuration.
+
 ## Stack
 
-- Kubernetes and Flux CD
-- Tailscale Kubernetes Operator for private application access
+- Kubernetes (k3s) and Flux CD
 - Kustomize and Helm
-- SOPS with Age for encrypted secrets
-- Cloudflare Tunnel for external access
+- SOPS with Age for encrypted Kubernetes secrets
+- Tailscale Kubernetes Operator and Tailscale Serve for private access
+- Traefik with Let's Encrypt DNS-01 certificates for private custom domains
+- Cloudflare Tunnel for selected externally reachable applications
 - Prometheus and Grafana for monitoring
 - Renovate for dependency updates
-- Synology NAS for NFS backups and media storage
+- Synology NAS for NFS storage, backups, and media automation
 
-## Applications
+## Workloads and access paths
 
-- [Audiobookshelf](https://www.audiobookshelf.org/) — audiobook and e-book server
-- [Jellyfin](https://jellyfin.org/) — media server running in a dedicated LXC
-- [Linkding](https://linkding.link/) — bookmark manager
-- [Navidrome](https://www.navidrome.org/) — private music streaming server
-- [Linkding backups](apps/proxmox/linkding/BACKUP.md) — daily full backups to
-  Synology over NFS
-- [Proxmox backups](infrastructure/proxmox-backup/README.md) — daily VM, LXC,
-  and host-configuration backups to Synology
-- [Synology media automation](synology/media-automation/README.md) — Seerr,
-  Radarr, Sonarr, Prowlarr, and qBittorrent project for media requests and
-  imports
+| Workload | Runs on | Access path |
+| --- | --- | --- |
+| Audiobookshelf | k3s | Cloudflare Tunnel, direct Tailscale Ingress, and the private Traefik gateway |
+| Linkding | k3s | Cloudflare Tunnel |
+| Navidrome | k3s | Private Traefik gateway over Tailscale |
+| Grafana | k3s | Cloudflare Tunnel and the private Traefik gateway |
+| Jellyfin | Dedicated Proxmox LXC | Private Traefik gateway forwarding to a fixed LAN endpoint |
+| Seerr | Synology Container Manager | Trusted LAN and Tailscale Serve on port `8443` |
+| Radarr, Sonarr, Prowlarr, qBittorrent | Synology Container Manager | Trusted LAN only |
+
+The private custom-domain routes resolve to the Tailscale address of the shared
+`homelab-gateway` service. A public DNS record does not make these routes public:
+clients still need tailnet access, and Tailscale Funnel is not enabled.
 
 ## Repository structure
 
 ```text
 .
 ├── apps/
-│   ├── base/                       # Reusable application manifests
-│   └── proxmox/                    # Proxmox application overlays
-│       ├── audiobookshelf/
-│       ├── jellyfin/               # Private gateway to the Jellyfin LXC
-│       ├── linkding/                # Linkding overlay and backup CronJob
-│       └── navidrome/               # Private Navidrome ingress
+│   ├── base/                       # Reusable Kubernetes application manifests
+│   └── proxmox/                    # Environment overlays and ingress routes
 ├── clusters/
-│   └── proxmox/                    # Flux entry point for the cluster
+│   └── proxmox/                    # Flux entry point and reconciliation objects
 ├── infrastructure/
-│   └── controllers/
-│       ├── base/                   # Reusable infrastructure manifests
-│       └── proxmox/                # Proxmox infrastructure overlay
+│   ├── controllers/
+│   │   ├── base/                   # Reusable controller definitions
+│   │   └── proxmox/                # Tailscale, Traefik, and Renovate overlays
+│   └── proxmox-backup/             # Host-configuration backup script and units
 ├── monitoring/
-│   ├── configs/
-│   │   └── proxmox/                # Monitoring configuration
-│   └── controllers/
-│       ├── base/                   # Monitoring Helm sources and releases
-│       └── proxmox/                # Proxmox monitoring overlay
+│   ├── controllers/                # kube-prometheus-stack installation
+│   └── configs/                    # Post-install monitoring resources
 ├── synology/
-│   └── media-automation/           # Automated movie and series requests
+│   └── media-automation/           # Compose workload and private-access guide
 └── renovate.json
 ```
 
-## Reconciliation flow
+## GitOps reconciliation
 
 ```mermaid
 flowchart TD
-    Git["Git repository"] --> Flux["Flux CD"]
-    Flux --> Cluster["clusters/proxmox"]
-    Cluster --> Apps["apps/proxmox"]
-    Cluster --> Infrastructure["infrastructure/controllers/proxmox"]
-    Cluster --> MonitoringControllers["monitoring/controllers/proxmox"]
-    MonitoringControllers --> MonitoringConfigs["monitoring/configs/proxmox"]
+    Git["Git repository"] --> Flux["Flux source"]
+    Flux --> Root["clusters/proxmox"]
+    Root --> Apps["apps/proxmox"]
+    Root --> Infra["infrastructure/controllers/proxmox"]
+    Root --> MonitoringControllers["monitoring/controllers/proxmox"]
+    MonitoringControllers -->|"reconciled first"| MonitoringConfigs["monitoring/configs/proxmox"]
 ```
 
 The root Flux Kustomization is defined in
-`clusters/proxmox/flux-system/gotk-sync.yaml`. It reconciles
-`clusters/proxmox`, which in turn manages applications, infrastructure, and
-monitoring.
+`clusters/proxmox/flux-system/gotk-sync.yaml`. The Synology Compose workload and
+the Proxmox host backup units are intentionally outside Flux and are installed
+through their respective runbooks.
 
 ## Runtime architecture
 
 ```mermaid
 flowchart LR
-    Cloudflare["Cloudflare Tunnel"]
-    Tailscale["Tailscale tailnet"]
+    Internet["Internet clients"]
+    Tailnet["Authorized tailnet clients"]
+    LAN["Trusted LAN clients"]
 
-    subgraph K3s["Proxmox k3s cluster"]
-        Linkding["Linkding"] -->|"application data"| LinkdingPVC["Linkding local-path PVC"]
-        Backup["Daily backup CronJob<br/>03:15 Europe/Amsterdam"] -->|"reads"| LinkdingPVC
-        Audiobookshelf["Audiobookshelf"] -->|"audiobook library over NFS"| AudiobooksNFS["Synology NFS PV"]
-        Navidrome["Navidrome"] -->|"music library over read-only NFS"| MusicNFS["Synology NFS PV"]
+    subgraph K3s["k3s on Proxmox"]
+        Cloudflared["Cloudflare Tunnel connectors"]
+        TSIngress["Tailscale Ingress proxy"]
+        Gateway["Traefik private gateway"]
+        Audiobookshelf["Audiobookshelf"]
+        Linkding["Linkding"]
+        Navidrome["Navidrome"]
         Grafana["Grafana"]
-        Traefik["Traefik private gateway"]
+        Prometheus["Prometheus"]
+        LocalPVC["local-path PVCs"]
+        LinkdingBackup["Linkding backup CronJob"]
     end
 
     subgraph Proxmox["Proxmox host"]
-        Jellyfin["Jellyfin LXC<br/>192.168.1.183:8096"]
+        Jellyfin["Jellyfin LXC"]
+        GuestBackup["VM/LXC backup job"]
+        ConfigBackup["Host configuration timer"]
     end
 
-    subgraph NAS["Synology NAS — 192.168.1.59"]
-        NFS["NFS export /volume1/backups<br/>archives under linkding/"]
-        Media["Container Manager<br/>Seerr + Radarr + Sonarr + Prowlarr + qBittorrent"]
-        Audiobooks["/volume1/media/audiobooks"]
-        Music["/volume1/media/music"]
+    subgraph NAS["Synology NAS"]
+        NFS["NFS: media and backups"]
+        Media["Seerr · Radarr · Sonarr · Prowlarr · qBittorrent"]
+        TSServe["Tailscale Serve"]
     end
 
-    Cloudflare --> Linkding
-    Cloudflare --> Audiobookshelf
-    Tailscale -->|"private HTTPS and large uploads"| Audiobookshelf
-    Tailscale -->|"private HTTPS"| Traefik
-    Traefik --> Grafana
-    Traefik --> Jellyfin
-    Traefik --> Navidrome
-    Backup -->|"validated full-backup ZIP"| NFS
-    AudiobooksNFS --> Audiobooks
-    MusicNFS --> Music
+    Internet --> Cloudflared
+    Cloudflared --> Audiobookshelf
+    Cloudflared --> Linkding
+    Cloudflared --> Grafana
+    Tailnet --> TSIngress
+    TSIngress --> Audiobookshelf
+    Tailnet --> Gateway
+    Gateway --> Audiobookshelf
+    Gateway --> Navidrome
+    Gateway --> Grafana
+    Gateway --> Jellyfin
+    Tailnet --> TSServe --> Media
+    LAN --> Media
+    Audiobookshelf --> LocalPVC
+    Linkding --> LocalPVC
+    Navidrome --> LocalPVC
+    Audiobookshelf -->|"audiobook library"| NFS
+    Navidrome -->|"read-only music library"| NFS
+    Grafana -->|"queries"| Prometheus
+    Jellyfin -->|"read-only media mount"| NFS
+    LinkdingBackup -->|"reads application data"| LocalPVC
+    LinkdingBackup -->|"full-backup ZIP"| NFS
+    GuestBackup --> NFS
+    ConfigBackup --> NFS
 ```
 
-Linkding's application data is stored on a `local-path` `ReadWriteOnce` PVC.
-The backup Pod uses pod affinity to run on the same Kubernetes node as Linkding,
-then writes the resulting archive to the Synology NFS export. Synology media
-automation is a separate Compose workload managed through Container Manager;
-it is not reconciled by Flux. Seerr is its end-user request UI, while Radarr,
-Sonarr, Prowlarr, and qBittorrent remain administrative interfaces.
+Cloudflare Tunnel and Tailscale are independent access paths. Removing a
+Cloudflare route does not remove its Tailscale route, and removing a Tailscale
+Ingress does not remove a private custom-domain route served by the shared
+Traefik gateway.
 
-Audiobookshelf keeps its SQLite configuration and metadata on local-path PVCs.
-Only the audiobook library is mounted from Synology at
-`/volume1/media/audiobooks` through a static `Retain` NFS volume. The Synology
-NFS rule for the `media` share must allow the Kubernetes node `192.168.1.225`
-read/write access.
+## Storage and backups
 
-Audiobookshelf is also available privately inside the tailnet at
-`https://audiobookshelf.tailccd1e9.ts.net/`. This route is managed by the
-Tailscale Kubernetes Operator and should be used for large uploads that exceed
-Cloudflare's request-body limit. Funnel is not enabled, so the endpoint is not
-publicly reachable.
+- Audiobookshelf configuration and metadata use local-path PVCs; its audiobook
+  library is a static `Retain` NFS volume on Synology.
+- Navidrome keeps its database and cache on a local-path PVC and mounts the
+  Synology music library read-only.
+- Linkding stores application data on a local-path `ReadWriteOnce` PVC. Its
+  backup Pod is scheduled next to the application and writes a validated ZIP to
+  Synology every day at 03:15 (`Europe/Amsterdam`). See the
+  [Linkding backup runbook](apps/proxmox/linkding/BACKUP.md).
+- Proxmox creates VM/LXC backups at 04:00 and host-configuration archives at
+  04:30. Both use 7 daily, 4 weekly, and 3 monthly restore points. See the
+  [Proxmox backup runbook](infrastructure/proxmox-backup/README.md).
+- Synology media automation is a separate Compose workload. Seerr is the
+  end-user request UI; the remaining interfaces are administrative. See the
+  [private Seerr access guide](synology/media-automation/TAILSCALE.md).
 
-The preferred private custom-domain endpoint is
-`https://audiobooks.vitalyguzun.com/`. Public DNS maps this name to the
-Tailscale IP of the `homelab-gateway` service, so the DNS record is visible
-publicly but the service itself remains reachable only from the tailnet.
-Traefik obtains and renews the certificate with a Let's Encrypt DNS-01
-challenge through Vercel DNS. The legacy `.ts.net` endpoint and Cloudflare
-Tunnel remain available during migration and can be removed after the custom
-domain has been verified from every client.
+NFS exports must be restricted by the Synology firewall and NFS permissions to
+the exact clients that use them. They must never be exposed through router port
+forwarding, Cloudflare Tunnel, or Tailscale Funnel.
 
-Jellyfin remains in its dedicated LXC and is exposed to the tailnet through
-the same private Traefik gateway at `https://jellyfin.vitalyguzun.com/`. The
-Kubernetes Service has no selector: its EndpointSlice forwards traffic to the
-reserved Jellyfin LAN address `192.168.1.183:8096`. Public DNS maps the hostname
-to the Tailscale IP of `homelab-gateway`; no router port forwarding or Tailscale
-Funnel is required.
+## Address configuration
 
-Grafana is exposed through the same private Traefik gateway at
-`https://grafana.vitalyguzun.com/`. Public DNS must map this hostname to the
-Tailscale IP of `homelab-gateway`. Traefik terminates HTTPS with a certificate
-obtained through the existing Let's Encrypt DNS-01 resolver. The custom-domain
-endpoint is reachable only from authorized tailnet clients; the existing local
-hostname and Cloudflare Tunnel remain available as fallback routes.
+Documentation uses role names instead of repeating the current LAN topology:
 
-Navidrome stores its database and cache on a 10 GiB local-path PVC and mounts
-the Synology music library from `/volume1/media/music` read-only. It is
-available at `https://navidrome.vitalyguzun.com/` through the private Traefik
-gateway. Public DNS must map the hostname to the Tailscale IP of
-`homelab-gateway`; clients must be connected to the tailnet.
+| Role | Source of truth |
+| --- | --- |
+| Synology NFS server | Audiobookshelf and Navidrome PVs, plus the Linkding backup CronJob |
+| Jellyfin LXC endpoint | Selector-less Service and EndpointSlice in `apps/proxmox/jellyfin/service.yaml` |
+| Kubernetes NFS clients | Synology NFS permissions; use the addresses of nodes that may mount each export |
+| Shared tailnet gateway | `infrastructure/controllers/proxmox/traefik/tailscale-service.yaml` |
+| Application hostnames | Ingress and Cloudflare Tunnel manifests next to each workload |
 
-## Linkding backups
-
-The `linkding-backup` CronJob runs every day at 03:15 in the
-`Europe/Amsterdam` time zone. It uses Linkding's transaction-safe
-`full_backup` command, which includes the SQLite database, bookmark assets,
-favicons, and preview images. The job validates the ZIP locally before copying
-it to:
-
-```text
-/volume1/backups/linkding/linkding-YYYY-MM-DDTHH-MM-SSZ.zip
-```
-
-The final filename only appears after the NFS copy completes. Old backups are
-not deleted by Kubernetes; retention and snapshots should be configured on
-Synology. Every Kubernetes node that can run Linkding must have `nfs-common`
-installed and must be allowed by the Synology NFS rule. See the
-[backup runbook](apps/proxmox/linkding/BACKUP.md) for preparation, manual test,
-and restore instructions.
+Private RFC 1918 addresses do not allow an Internet user to route into the LAN
+and should not be treated as passwords. They can still reveal useful topology
+to an attacker, so they are not duplicated in diagrams or runbooks. The
+environment-specific manifests retain the values needed by Kubernetes. Moving
+those overlays to a private repository or resolving internal DNS names is
+required if the topology itself must remain confidential.
 
 ## Secrets
 
-Secrets committed to the repository are encrypted with SOPS. Flux decrypts
-them in the cluster using the `sops-age` secret in the `flux-system`
+Kubernetes secrets committed to the repository are encrypted with SOPS. Flux
+decrypts them in the cluster using the `sops-age` Secret in the `flux-system`
 namespace.
 
-Do not commit unencrypted credentials, private keys, local `.env` files, or
-generated TLS files.
+Do not commit unencrypted credentials, private keys, local `.env` files,
+generated TLS files, decrypted manifests, or backup archives. Public DNS names,
+SOPS Age recipients, loopback addresses, wildcard bind addresses, and public
+DNS resolvers are not credentials. See [SECURITY.md](SECURITY.md) for the full
+handling policy and incident guidance.
 
 ## Bootstrap
 
@@ -201,12 +205,13 @@ flux bootstrap github \
   --personal
 ```
 
-Before bootstrapping, make sure the target Kubernetes context is selected and
-the SOPS Age key is available to Flux as `flux-system/sops-age`.
+Before bootstrapping, select the target Kubernetes context and create the
+`flux-system/sops-age` Secret from the private Age identity. The private
+identity must not be stored in this repository.
 
 ## Validation
 
-Render the cluster configuration locally:
+Render every reconciled Kustomization before merging:
 
 ```shell
 kubectl kustomize clusters/proxmox
@@ -215,3 +220,7 @@ kubectl kustomize infrastructure/controllers/proxmox
 kubectl kustomize monitoring/controllers/proxmox
 kubectl kustomize monitoring/configs/proxmox
 ```
+
+For the Synology workload, copy `.env.example` to an ignored `.env`, fill in
+the environment-specific values, and validate it on the target host with
+`docker compose config`.

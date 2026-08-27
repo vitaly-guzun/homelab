@@ -19,8 +19,8 @@ configure retention or snapshots on Synology separately.
 
 1. In DSM, enable NFS under **Control Panel -> File Services -> NFS**.
 2. Create the `backups` shared folder on `volume1`.
-3. Add an NFS permission for the Kubernetes node `192.168.1.225`
-   (`k3s-proxmox-01`):
+3. Add an NFS permission for the exact Kubernetes node that runs Linkding
+   (`<K3S_NODE_IP>`):
    - privilege: `Read/Write`;
    - squash: `Map all users to admin`;
    - security: `sys`.
@@ -30,8 +30,9 @@ configure retention or snapshots on Synology separately.
 5. Make sure the NFS client package is installed on every worker node. On
    Debian/Ubuntu this package is `nfs-common`.
 
-The manifest expects the NAS at `192.168.1.59` and the NFS export at
-`/volume1/backups`. Update `backup-cronjob.yaml` if either value differs.
+The NAS endpoint and the `/volume1/backups` export are configured in
+`backup-cronjob.yaml`. Treat that manifest as the source of truth and update it
+when the NAS address or export changes.
 
 ## First run
 
