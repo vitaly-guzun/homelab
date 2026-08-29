@@ -53,9 +53,9 @@ control.
   application authentication.
 - Use Tailscale ACLs/grants for private routes. Do not enable Funnel unless a
   service is deliberately intended to be public.
-- A Cloudflare Tunnel removes the need for an inbound router port, but it does
-  not replace authentication. Protect the application itself and use
-  Cloudflare Access where appropriate.
+- Keep the Linkding work hostname behind Cloudflare Access. Require the intended
+  user identity and, when stable, the corporate VPN egress IP range; the Tunnel
+  alone is not an authorization boundary.
 - Use unique credentials and least-privilege service accounts. Backups contain
   sensitive configuration and require the same protection as the source.
 
@@ -78,7 +78,7 @@ Removing a value in a later commit does not remove it from Git history.
   disclosure but is not a substitute for rotation.
 - For a private IP address alone, credential rotation is unnecessary. Verify
   firewall rules, router port forwarding, service authentication, and VPN or
-  tunnel policy. Change the address only if the wider exposure model requires
+  ingress policy. Change the address only if the wider exposure model requires
   it.
 - For an accidentally public service, close the route first, review access and
   application logs, rotate reachable credentials, and only then restore access

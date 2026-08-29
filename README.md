@@ -16,7 +16,7 @@ before publishing or copying the configuration.
 - SOPS with Age for encrypted Kubernetes secrets
 - Tailscale Kubernetes Operator and Tailscale Serve for private access
 - Traefik with Let's Encrypt DNS-01 certificates for private custom domains
-- Cloudflare Tunnel for selected externally reachable applications
+- Cloudflare Tunnel and Access for the protected Linkding work route
 - Prometheus and Grafana for monitoring
 - Renovate for dependency updates
 - Synology NAS for NFS storage, backups, and media automation
@@ -25,10 +25,10 @@ before publishing or copying the configuration.
 
 | Workload | Runs on | Access path |
 | --- | --- | --- |
-| Audiobookshelf | k3s | Cloudflare Tunnel, direct Tailscale Ingress, and the private Traefik gateway |
-| Linkding | k3s | Cloudflare Tunnel |
+| Audiobookshelf | k3s | Direct Tailscale Ingress and the private Traefik gateway |
+| Linkding | k3s | Private Traefik gateway and a Cloudflare Access-protected work route |
 | Navidrome | k3s | Private Traefik gateway over Tailscale |
-| Grafana | k3s | Cloudflare Tunnel and the private Traefik gateway |
+| Grafana | k3s | Private Traefik gateway over Tailscale |
 | Jellyfin | Dedicated Proxmox LXC | Private Traefik gateway forwarding to a fixed LAN endpoint |
 | Seerr | Synology Container Manager | Trusted LAN and Tailscale Serve on port `8443` |
 | Radarr, Sonarr, Prowlarr, qBittorrent | Synology Container Manager | Trusted LAN only |
@@ -80,12 +80,12 @@ through their respective runbooks.
 
 ```mermaid
 flowchart LR
-    Internet["Internet clients"]
+    WorkComputer["Work computer"]
     Tailnet["Authorized tailnet clients"]
     LAN["Trusted LAN clients"]
 
     subgraph K3s["k3s on Proxmox"]
-        Cloudflared["Cloudflare Tunnel connectors"]
+        Cloudflared["Linkding Cloudflare Tunnel"]
         TSIngress["Tailscale Ingress proxy"]
         Gateway["Traefik private gateway"]
         Audiobookshelf["Audiobookshelf"]
@@ -109,14 +109,12 @@ flowchart LR
         TSServe["Tailscale Serve"]
     end
 
-    Internet --> Cloudflared
-    Cloudflared --> Audiobookshelf
-    Cloudflared --> Linkding
-    Cloudflared --> Grafana
+    WorkComputer -->|"Cloudflare Access"| Cloudflared --> Linkding
     Tailnet --> TSIngress
     TSIngress --> Audiobookshelf
     Tailnet --> Gateway
     Gateway --> Audiobookshelf
+    Gateway --> Linkding
     Gateway --> Navidrome
     Gateway --> Grafana
     Gateway --> Jellyfin
@@ -135,10 +133,10 @@ flowchart LR
     ConfigBackup --> NFS
 ```
 
-Cloudflare Tunnel and Tailscale are independent access paths. Removing a
-Cloudflare route does not remove its Tailscale route, and removing a Tailscale
-Ingress does not remove a private custom-domain route served by the shared
-Traefik gateway.
+Direct Tailscale Ingress and the private custom-domain routes served by the
+shared Traefik gateway are independent access paths. Removing one does not
+remove the other. Linkding additionally has a work-computer route through
+Cloudflare Tunnel; Cloudflare Access must protect that hostname.
 
 ## Storage and backups
 
@@ -159,7 +157,7 @@ Traefik gateway.
 
 NFS exports must be restricted by the Synology firewall and NFS permissions to
 the exact clients that use them. They must never be exposed through router port
-forwarding, Cloudflare Tunnel, or Tailscale Funnel.
+forwarding or Tailscale Funnel.
 
 ## Address configuration
 
@@ -171,7 +169,7 @@ Documentation uses role names instead of repeating the current LAN topology:
 | Jellyfin LXC endpoint | Selector-less Service and EndpointSlice in `apps/proxmox/jellyfin/service.yaml` |
 | Kubernetes NFS clients | Synology NFS permissions; use the addresses of nodes that may mount each export |
 | Shared tailnet gateway | `infrastructure/controllers/proxmox/traefik/tailscale-service.yaml` |
-| Application hostnames | Ingress and Cloudflare Tunnel manifests next to each workload |
+| Application hostnames | Ingress manifests and the Linkding Tunnel manifest next to each workload |
 
 Private RFC 1918 addresses do not allow an Internet user to route into the LAN
 and should not be treated as passwords. They can still reveal useful topology

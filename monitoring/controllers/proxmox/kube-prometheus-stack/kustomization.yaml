@@ -3,8 +3,6 @@ kind: Kustomization
 namespace: monitoring
 resources:
   - ../../base/kube-prometheus-stack/
-  - cloudflare.yaml
-  - cloudflare-secret.yaml
   - grafana-admin-secret.yaml
   - traefik-ingress.yaml
 patches:

@@ -7,6 +7,7 @@ resources:
   - linkding-container-env-secret.yaml
   - cloudflare.yaml
   - cloudflare-secret.yaml
+  - traefik-ingress.yaml
 images:
   - name: sissbruecker/linkding
     newTag: 1.46.2
