@@ -1,0 +1,8 @@
+tunnel: linkding-proxmox
+credentials-file: /etc/cloudflared/creds/cloudflare-secret.json
+metrics: 0.0.0.0:2000
+no-autoupdate: true
+ingress:
+  - hostname: linkding-work.vitalyguzun-homelab.com
+    service: http://linkding:9090
+  - service: http_status:404
