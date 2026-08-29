@@ -53,9 +53,14 @@ control.
   application authentication.
 - Use Tailscale ACLs/grants for private routes. Do not enable Funnel unless a
   service is deliberately intended to be public.
-- Keep the Linkding work hostname behind Cloudflare Access. Require the intended
-  user identity and, when stable, the corporate VPN egress IP range; the Tunnel
-  alone is not an authorization boundary.
+- Keep `linkding-work.vitalyguzun-homelab.com` behind Cloudflare Access. Use an
+  exact email address as the Allow policy's `Emails` selector, not a generic
+  One-time PIN login-method selector. When stable, also require the corporate
+  VPN egress IP range. The Tunnel and Linkding login alone are not substitutes
+  for the Access policy.
+- Create or verify the Access application before publishing a Tunnel DNS route.
+  Deleting a DNS route does not delete its Tunnel; retain `linkding-proxmox`
+  while the Linkding work route is in use.
 - Use unique credentials and least-privilege service accounts. Backups contain
   sensitive configuration and require the same protection as the source.
 
@@ -68,6 +73,8 @@ control.
    production `.env` values, and backup data.
 4. Check that new listening ports are limited to the intended LAN, tailnet, or
    tunnel path.
+5. For Linkding Tunnel changes, verify the external DNS and Access inventory
+   against `apps/proxmox/linkding/ACCESS.md`.
 
 ## If something was exposed
 

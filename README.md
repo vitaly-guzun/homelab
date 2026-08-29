@@ -26,7 +26,7 @@ before publishing or copying the configuration.
 | Workload | Runs on | Access path |
 | --- | --- | --- |
 | Audiobookshelf | k3s | Direct Tailscale Ingress and the private Traefik gateway |
-| Linkding | k3s | Private Traefik gateway and a Cloudflare Access-protected work route |
+| Linkding | k3s | Private Traefik gateway at `linkding.vitalyguzun.com` and a Cloudflare Access-protected work route at `linkding-work.vitalyguzun-homelab.com` |
 | Navidrome | k3s | Private Traefik gateway over Tailscale |
 | Grafana | k3s | Private Traefik gateway over Tailscale |
 | Jellyfin | Dedicated Proxmox LXC | Private Traefik gateway forwarding to a fixed LAN endpoint |
@@ -36,6 +36,12 @@ before publishing or copying the configuration.
 The private custom-domain routes resolve to the Tailscale address of the shared
 `homelab-gateway` service. A public DNS record does not make these routes public:
 clients still need tailnet access, and Tailscale Funnel is not enabled.
+
+Linkding is the only workload that retains a Cloudflare Tunnel. The work route
+exists for a managed computer that cannot join the tailnet; it does not replace
+the private route used by tailnet clients. See the
+[Linkding access runbook](apps/proxmox/linkding/ACCESS.md) for the DNS, Access,
+and Tunnel sources of truth.
 
 ## Repository structure
 
@@ -83,6 +89,7 @@ flowchart LR
     WorkComputer["Work computer"]
     Tailnet["Authorized tailnet clients"]
     LAN["Trusted LAN clients"]
+    CloudflareAccess["Cloudflare DNS and Access"]
 
     subgraph K3s["k3s on Proxmox"]
         Cloudflared["Linkding Cloudflare Tunnel"]
@@ -109,7 +116,7 @@ flowchart LR
         TSServe["Tailscale Serve"]
     end
 
-    WorkComputer -->|"Cloudflare Access"| Cloudflared --> Linkding
+    WorkComputer --> CloudflareAccess --> Cloudflared --> Linkding
     Tailnet --> TSIngress
     TSIngress --> Audiobookshelf
     Tailnet --> Gateway
@@ -136,7 +143,8 @@ flowchart LR
 Direct Tailscale Ingress and the private custom-domain routes served by the
 shared Traefik gateway are independent access paths. Removing one does not
 remove the other. Linkding additionally has a work-computer route through
-Cloudflare Tunnel; Cloudflare Access must protect that hostname.
+Cloudflare Tunnel; Cloudflare Access must protect that hostname before its DNS
+route is published. No inbound router port or Tailscale Funnel is required.
 
 ## Storage and backups
 
@@ -147,7 +155,9 @@ Cloudflare Tunnel; Cloudflare Access must protect that hostname.
 - Linkding stores application data on a local-path `ReadWriteOnce` PVC. Its
   backup Pod is scheduled next to the application and writes a validated ZIP to
   Synology every day at 03:15 (`Europe/Amsterdam`). See the
-  [Linkding backup runbook](apps/proxmox/linkding/BACKUP.md).
+  [Linkding backup runbook](apps/proxmox/linkding/BACKUP.md). Access paths are
+  documented separately in the
+  [Linkding access runbook](apps/proxmox/linkding/ACCESS.md).
 - Proxmox creates VM/LXC backups at 04:00 and host-configuration archives at
   04:30. Both use 7 daily, 4 weekly, and 3 monthly restore points. See the
   [Proxmox backup runbook](infrastructure/proxmox-backup/README.md).
@@ -169,7 +179,8 @@ Documentation uses role names instead of repeating the current LAN topology:
 | Jellyfin LXC endpoint | Selector-less Service and EndpointSlice in `apps/proxmox/jellyfin/service.yaml` |
 | Kubernetes NFS clients | Synology NFS permissions; use the addresses of nodes that may mount each export |
 | Shared tailnet gateway | `infrastructure/controllers/proxmox/traefik/tailscale-service.yaml` |
-| Application hostnames | Ingress manifests and the Linkding Tunnel manifest next to each workload |
+| Private application hostnames | Vercel DNS records pointing to the shared tailnet gateway, plus Ingress manifests next to each workload |
+| Linkding work hostname | Cloudflare DNS and Access, with the origin route in `apps/proxmox/linkding/cloudflared-config.yaml` |
 
 Private RFC 1918 addresses do not allow an Internet user to route into the LAN
 and should not be treated as passwords. They can still reveal useful topology
