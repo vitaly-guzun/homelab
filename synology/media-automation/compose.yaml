@@ -79,8 +79,8 @@ services:
     volumes:
       - ${CONFIG_ROOT:-/volume1/docker/media-automation}/prowlarr:/config
     ports:
-      # Administrative UI. Keep it reachable only from the trusted LAN or
-      # through the private Tailscale route, just like Radarr and qBittorrent.
+      # Administrative UI. Keep it reachable only from the trusted LAN;
+      # unlike Radarr, Sonarr, and qBittorrent, Prowlarr has no gateway route.
       - ${WEB_BIND_ADDRESS:-192.168.1.59}:9696:9696
     restart: unless-stopped
     security_opt:
@@ -101,7 +101,8 @@ services:
       - ${CONFIG_ROOT:-/volume1/docker/media-automation}/seerr:/app/config
     ports:
       # This is the only end-user UI in this Compose project. Remote users
-      # should reach it through Tailscale (or a separately secured HTTPS proxy).
+      # should use the private Traefik gateway or the optional Tailscale Serve
+      # fallback documented in TAILSCALE.md.
       - ${WEB_BIND_ADDRESS:-192.168.1.59}:5055:5055
       # Local-only backend for `tailscale serve`. Keeping this separate from
       # the LAN binding avoids exposing the other automation UIs to Tailscale.

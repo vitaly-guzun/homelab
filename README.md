@@ -119,7 +119,11 @@ flowchart LR
 
     subgraph NAS["Synology NAS"]
         NFS["NFS: media and backups"]
-        Media["Seerr · Radarr · Sonarr · Prowlarr · qBittorrent"]
+        Seerr["Seerr :5055"]
+        Radarr["Radarr :7878"]
+        Sonarr["Sonarr :8989"]
+        Prowlarr["Prowlarr :9696"]
+        QBittorrent["qBittorrent :8080"]
         TSServe["Tailscale Serve"]
     end
 
@@ -130,14 +134,18 @@ flowchart LR
     Gateway --> Audiobookshelf
     Gateway --> Linkding
     Gateway --> Navidrome
-    Gateway --> RadarrGateway --> Media
-    Gateway --> SeerrGateway --> Media
-    Gateway --> SonarrGateway --> Media
-    Gateway --> TorrentGateway --> Media
+    Gateway --> RadarrGateway --> Radarr
+    Gateway --> SeerrGateway --> Seerr
+    Gateway --> SonarrGateway --> Sonarr
+    Gateway --> TorrentGateway --> QBittorrent
     Gateway --> Grafana
     Gateway --> Jellyfin
-    Tailnet --> TSServe --> Media
-    LAN --> Media
+    Tailnet --> TSServe --> Seerr
+    LAN --> Seerr
+    LAN --> Radarr
+    LAN --> Sonarr
+    LAN --> Prowlarr
+    LAN --> QBittorrent
     Audiobookshelf --> LocalPVC
     Linkding --> LocalPVC
     Navidrome --> LocalPVC
@@ -173,8 +181,9 @@ route is published. No inbound router port or Tailscale Funnel is required.
   04:30. Both use 7 daily, 4 weekly, and 3 monthly restore points. See the
   [Proxmox backup runbook](infrastructure/proxmox-backup/README.md).
 - Synology media automation is a separate Compose workload. Seerr is the
-  end-user request UI; the remaining interfaces are administrative. See the
-  [private Seerr access guide](synology/media-automation/TAILSCALE.md).
+  end-user request UI; Radarr, Sonarr, and qBittorrent have authenticated
+  private gateway routes, while Prowlarr remains LAN-only. See the
+  [private media access runbook](synology/media-automation/TAILSCALE.md).
 
 NFS exports must be restricted by the Synology firewall and NFS permissions to
 the exact clients that use them. They must never be exposed through router port
@@ -190,7 +199,8 @@ Documentation uses role names instead of repeating the current LAN topology:
 | Jellyfin LXC endpoint | Selector-less Service and EndpointSlice in `apps/proxmox/jellyfin/service.yaml` |
 | Kubernetes NFS clients | Synology NFS permissions; use the addresses of nodes that may mount each export |
 | Shared tailnet gateway | `infrastructure/controllers/proxmox/traefik/tailscale-service.yaml` |
-| Private application hostnames | Vercel DNS records pointing to the shared tailnet gateway, plus Ingress manifests next to each workload (the Seerr route proxies to the Synology LAN endpoint) |
+| Synology media gateway backends | Selector-less Services and EndpointSlices in `apps/proxmox/{seerr,radarr,sonarr,torrent}/service.yaml` |
+| Private application hostnames | Explicit Vercel DNS records pointing to the shared tailnet gateway, plus Ingress manifests next to each workload |
 | Linkding work hostname | Cloudflare DNS and Access, with the origin route in `apps/proxmox/linkding/cloudflared-config.yaml` |
 
 Private RFC 1918 addresses do not allow an Internet user to route into the LAN

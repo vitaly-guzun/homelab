@@ -49,8 +49,11 @@ control.
 
 - Restrict Synology NFS exports to the exact Kubernetes nodes and Proxmox hosts
   that mount them. Never port-forward NFS from the router.
-- Keep Radarr, Sonarr, Prowlarr, and qBittorrent on the trusted LAN and require
-  application authentication.
+- Keep the Synology backends for Radarr, Sonarr, Prowlarr, and qBittorrent on
+  the trusted LAN and require application authentication. Radarr, Sonarr, and
+  qBittorrent may additionally be reached through the private Traefik gateway;
+  Prowlarr remains LAN-only. Never publish these administrative interfaces
+  through a public proxy or Tailscale Funnel.
 - Use Tailscale ACLs/grants for private routes. Do not enable Funnel unless a
   service is deliberately intended to be public.
 - Keep `linkding-work.vitalyguzun-homelab.com` behind Cloudflare Access. Use an
