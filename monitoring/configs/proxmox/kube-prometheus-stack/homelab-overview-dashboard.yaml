@@ -190,6 +190,55 @@ data:
           "targets": [{"expr": "sum by (namespace) (increase(kube_pod_container_status_restarts_total[1h]))", "legendFormat": "{{namespace}}", "refId": "A"}],
           "title": "Pod restarts (last hour)",
           "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": false, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "line"}}, "max": 100, "min": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 90}]}, "unit": "percent"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 6, "x": 0, "y": 20},
+          "id": 13,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "100 * rate(node_disk_io_time_seconds_total{device!~\"^(loop|ram|fd|sr|zram|nbd).*\"}[5m])", "legendFormat": "{{instance}} {{device}}", "refId": "A"}],
+          "title": "Disk utilization",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": false, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "line"}}, "min": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 10}, {"color": "red", "value": 30}]}, "unit": "ms"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 6, "x": 6, "y": 20},
+          "id": 14,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [
+            {"expr": "1000 * rate(node_disk_read_time_seconds_total{device!~\"^(loop|ram|fd|sr|zram|nbd).*\"}[5m]) / clamp_min(rate(node_disk_reads_completed_total{device!~\"^(loop|ram|fd|sr|zram|nbd).*\"}[5m]), 1e-9)", "legendFormat": "Read {{instance}} {{device}}", "refId": "A"},
+            {"expr": "1000 * rate(node_disk_write_time_seconds_total{device!~\"^(loop|ram|fd|sr|zram|nbd).*\"}[5m]) / clamp_min(rate(node_disk_writes_completed_total{device!~\"^(loop|ram|fd|sr|zram|nbd).*\"}[5m]), 1e-9)", "legendFormat": "Write {{instance}} {{device}}", "refId": "B"}
+          ],
+          "title": "Disk latency",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": true, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": false, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "unit": "Bps"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 6, "x": 12, "y": 20},
+          "id": 15,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [
+            {"expr": "rate(node_disk_read_bytes_total{device!~\"^(loop|ram|fd|sr|zram|nbd).*\"}[5m])", "legendFormat": "Read {{instance}} {{device}}", "refId": "A"},
+            {"expr": "-rate(node_disk_written_bytes_total{device!~\"^(loop|ram|fd|sr|zram|nbd).*\"}[5m])", "legendFormat": "Write {{instance}} {{device}}", "refId": "B"}
+          ],
+          "title": "Disk throughput",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": false, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "min": 0, "unit": "iops"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 6, "x": 18, "y": 20},
+          "id": 16,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [
+            {"expr": "rate(node_disk_reads_completed_total{device!~\"^(loop|ram|fd|sr|zram|nbd).*\"}[5m])", "legendFormat": "Read {{instance}} {{device}}", "refId": "A"},
+            {"expr": "rate(node_disk_writes_completed_total{device!~\"^(loop|ram|fd|sr|zram|nbd).*\"}[5m])", "legendFormat": "Write {{instance}} {{device}}", "refId": "B"}
+          ],
+          "title": "Disk IOPS",
+          "type": "timeseries"
         }
       ],
       "refresh": "30s",
@@ -201,6 +250,6 @@ data:
       "timezone": "browser",
       "title": "Homelab Overview",
       "uid": "homelab-overview",
-      "version": 1,
+      "version": 2,
       "weekStart": ""
     }
