@@ -8,3 +8,4 @@ resources:
   - radarr
   - seerr
   - sonarr
+  - torrent
