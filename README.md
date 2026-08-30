@@ -31,7 +31,8 @@ before publishing or copying the configuration.
 | Grafana | k3s | Private Traefik gateway over Tailscale |
 | Jellyfin | Dedicated Proxmox LXC | Private Traefik gateway forwarding to a fixed LAN endpoint |
 | Seerr | Synology Container Manager | Trusted LAN, Tailscale Serve on port `8443`, and the private Traefik gateway at `seerr.vitalyguzun.com` |
-| Radarr, Sonarr, Prowlarr, qBittorrent | Synology Container Manager | Trusted LAN only |
+| Radarr | Synology Container Manager | Trusted LAN and the private Traefik gateway at `radarr.vitalyguzun.com` |
+| Sonarr, Prowlarr, qBittorrent | Synology Container Manager | Trusted LAN only |
 
 The private custom-domain routes resolve to the Tailscale address of the shared
 `homelab-gateway` service. A public DNS record does not make these routes public:
@@ -98,6 +99,7 @@ flowchart LR
         Audiobookshelf["Audiobookshelf"]
         Linkding["Linkding"]
         Navidrome["Navidrome"]
+        RadarrGateway["Radarr route"]
         SeerrGateway["Seerr route"]
         Grafana["Grafana"]
         Prometheus["Prometheus"]
@@ -124,6 +126,7 @@ flowchart LR
     Gateway --> Audiobookshelf
     Gateway --> Linkding
     Gateway --> Navidrome
+    Gateway --> RadarrGateway --> Media
     Gateway --> SeerrGateway --> Media
     Gateway --> Grafana
     Gateway --> Jellyfin
