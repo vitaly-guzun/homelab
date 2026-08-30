@@ -26,6 +26,20 @@ spec:
         target:
           kind: PrometheusRule
   values:
+    prometheus:
+      prometheusSpec:
+        retention: 30d
+        # Keep headroom on the 40 GiB volume for the WAL and compaction.
+        retentionSize: 35GB
+        storageSpec:
+          volumeClaimTemplate:
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 40Gi
+
     grafana:
       adminPassword: mypassword
 

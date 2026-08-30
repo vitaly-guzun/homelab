@@ -20,3 +20,6 @@ patches:
           existingSecret: grafana-admin-credentials
           userKey: admin-user
           passwordKey: admin-password
+      - op: add
+        path: /spec/values/prometheus/prometheusSpec/storageSpec/volumeClaimTemplate/spec/storageClassName
+        value: local-path

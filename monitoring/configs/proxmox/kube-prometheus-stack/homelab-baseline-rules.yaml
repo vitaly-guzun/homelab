@@ -1,0 +1,40 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: homelab-baseline
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: homelab.baseline
+      rules:
+        - alert: HomelabNodeUsingSwap
+          expr: >-
+            node_memory_SwapFree_bytes / node_memory_SwapTotal_bytes < 0.90
+            and node_memory_SwapTotal_bytes > 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: Swap usage detected on {{ $labels.instance }}
+            description: More than 10% of swap has been in use for 15 minutes.
+
+        - alert: HomelabPrometheusStorageNearlyFull
+          expr: >-
+            kubelet_volume_stats_available_bytes{
+              namespace="monitoring",
+              persistentvolumeclaim=~"prometheus-kube-prometheus-stack-prometheus-db-.*"
+            } /
+            kubelet_volume_stats_capacity_bytes{
+              namespace="monitoring",
+              persistentvolumeclaim=~"prometheus-kube-prometheus-stack-prometheus-db-.*"
+            } < 0.15
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: Prometheus storage is nearly full
+            description: >-
+              PVC {{ $labels.persistentvolumeclaim }} has less than 15% free
+              space remaining.
