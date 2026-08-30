@@ -25,6 +25,12 @@ Set that URL in **Seerr -> Settings -> General -> Application URL**. Share the
 Synology Tailscale machine with each remote user and, when custom tailnet access
 controls are enabled, grant shared users only `tcp:8443`.
 
+The preferred friendly URL is `https://seerr.vitalyguzun.com`. Its explicit
+Vercel DNS record points to the Tailscale address of `homelab-gateway`, where
+Traefik terminates HTTPS and proxies to the trusted-LAN Seerr endpoint. This
+route is also private to authorized tailnet clients. The direct `:8443` URL is
+kept as an independent fallback if the Kubernetes gateway is unavailable.
+
 Do not enable Tailscale Funnel and do not forward port `8443` on the router.
 Tailscale Serve keeps the endpoint private to authorized tailnet users.
 

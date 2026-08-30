@@ -30,7 +30,7 @@ before publishing or copying the configuration.
 | Navidrome | k3s | Private Traefik gateway over Tailscale |
 | Grafana | k3s | Private Traefik gateway over Tailscale |
 | Jellyfin | Dedicated Proxmox LXC | Private Traefik gateway forwarding to a fixed LAN endpoint |
-| Seerr | Synology Container Manager | Trusted LAN and Tailscale Serve on port `8443` |
+| Seerr | Synology Container Manager | Trusted LAN, Tailscale Serve on port `8443`, and the private Traefik gateway at `seerr.vitalyguzun.com` |
 | Radarr, Sonarr, Prowlarr, qBittorrent | Synology Container Manager | Trusted LAN only |
 
 The private custom-domain routes resolve to the Tailscale address of the shared
@@ -98,6 +98,7 @@ flowchart LR
         Audiobookshelf["Audiobookshelf"]
         Linkding["Linkding"]
         Navidrome["Navidrome"]
+        SeerrGateway["Seerr route"]
         Grafana["Grafana"]
         Prometheus["Prometheus"]
         LocalPVC["local-path PVCs"]
@@ -123,6 +124,7 @@ flowchart LR
     Gateway --> Audiobookshelf
     Gateway --> Linkding
     Gateway --> Navidrome
+    Gateway --> SeerrGateway --> Media
     Gateway --> Grafana
     Gateway --> Jellyfin
     Tailnet --> TSServe --> Media
@@ -179,7 +181,7 @@ Documentation uses role names instead of repeating the current LAN topology:
 | Jellyfin LXC endpoint | Selector-less Service and EndpointSlice in `apps/proxmox/jellyfin/service.yaml` |
 | Kubernetes NFS clients | Synology NFS permissions; use the addresses of nodes that may mount each export |
 | Shared tailnet gateway | `infrastructure/controllers/proxmox/traefik/tailscale-service.yaml` |
-| Private application hostnames | Vercel DNS records pointing to the shared tailnet gateway, plus Ingress manifests next to each workload |
+| Private application hostnames | Vercel DNS records pointing to the shared tailnet gateway, plus Ingress manifests next to each workload (the Seerr route proxies to the Synology LAN endpoint) |
 | Linkding work hostname | Cloudflare DNS and Access, with the origin route in `apps/proxmox/linkding/cloudflared-config.yaml` |
 
 Private RFC 1918 addresses do not allow an Internet user to route into the LAN
