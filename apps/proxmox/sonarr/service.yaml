@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: sonarr
+spec:
+  ports:
+    - name: http
+      port: 8989
+      protocol: TCP
+      targetPort: 8989
+  type: ClusterIP
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: sonarr
+  labels:
+    kubernetes.io/service-name: sonarr
+    endpointslice.kubernetes.io/managed-by: fluxcd
+addressType: IPv4
+endpoints:
+  - addresses:
+      - 192.168.1.59
+    conditions:
+      ready: true
+ports:
+  - name: http
+    port: 8989
+    protocol: TCP
