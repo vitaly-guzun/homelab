@@ -18,13 +18,6 @@ spec:
       interval: 12h
   values:
     config: |-
-      auths:
-        synology_v2:
-          community: ${SNMP_COMMUNITY}
-          security_level: noAuthNoPriv
-          auth_protocol: MD5
-          priv_protocol: DES
-          version: 2
       modules:
         synology:
           get:
@@ -86,11 +79,44 @@ spec:
                   labelname: disk_model
                   oid: 1.3.6.1.4.1.6574.2.1.1.3
                   type: DisplayString
+    # snmp_exporter expands environment variables for SNMPv3 credentials, but
+    # not for an SNMPv2c community. Render the auth config into an in-memory
+    # volume so the SOPS-managed community does not have to live in a ConfigMap.
     extraArgs:
-      - --config.expand-environment-variables
-    envFrom:
-      - secretRef:
-          name: synology-snmp-credentials
+      - --config.file=/run/secrets/snmp-exporter/snmp-auth.yaml
+    extraVolumes:
+      - name: snmp-auth
+        emptyDir:
+          medium: Memory
+    extraVolumeMounts:
+      - name: snmp-auth
+        mountPath: /run/secrets/snmp-exporter
+        readOnly: true
+    extraInitContainers:
+      - name: render-snmp-auth
+        image: busybox:1.37.0
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          runAsGroup: 1000
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+        envFrom:
+          - secretRef:
+              name: synology-snmp-credentials
+        command:
+          - /bin/sh
+          - -ec
+        args:
+          - |-
+            umask 077
+            printf 'auths:\n  synology_v2:\n    community: %s\n    security_level: noAuthNoPriv\n    auth_protocol: MD5\n    priv_protocol: DES\n    version: 2\n' "$SNMP_COMMUNITY" > /run/secrets/snmp-exporter/snmp-auth.yaml
+        volumeMounts:
+          - name: snmp-auth
+            mountPath: /run/secrets/snmp-exporter
     resources:
       requests:
         cpu: 10m
@@ -120,4 +146,3 @@ spec:
         enabled: true
         labels:
           release: kube-prometheus-stack
-
