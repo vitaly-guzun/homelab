@@ -239,6 +239,72 @@ data:
           ],
           "title": "Disk IOPS",
           "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Highest physical CPU sensor reported by node_exporter. The exporter must run on the Proxmox host; the k3s VM cannot see mini-PC sensors.",
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "max": 100, "min": 0, "noValue": "N/A", "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 85}]}, "unit": "celsius"}, "overrides": []},
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 28},
+          "id": 17,
+          "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "max(node_hwmon_temp_celsius{chip=~\".*(coretemp|k10temp|zenpower|cpu_thermal).*\"})", "refId": "A"}],
+          "title": "Mini-PC CPU temperature",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Synology storage-system temperature from SYNOLOGY-SYSTEM-MIB.",
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "max": 70, "min": 0, "noValue": "N/A", "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 50}, {"color": "red", "value": 60}]}, "unit": "celsius"}, "overrides": []},
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 28},
+          "id": 18,
+          "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "max(synology_system_temperature_celsius)", "refId": "A"}],
+          "title": "Synology system temperature",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Highest temperature across all drives reported by DSM.",
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "max": 65, "min": 0, "noValue": "N/A", "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 45}, {"color": "red", "value": 50}]}, "unit": "celsius"}, "overrides": []},
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 28},
+          "id": 19,
+          "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "max(synology_disk_temperature_celsius)", "refId": "A"}],
+          "title": "Hottest Synology disk",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "DSM reports 1 for normal and 2 for failed. Shows the worst thermal or fan status.",
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [{"options": {"1": {"color": "green", "index": 0, "text": "Normal"}, "2": {"color": "red", "index": 1, "text": "Failed"}}, "type": "value"}], "max": 2, "min": 1, "noValue": "N/A", "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 2}]}, "unit": "short"}, "overrides": []},
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 28},
+          "id": 20,
+          "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["max"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+          "targets": [{"expr": "{__name__=~\"synology_(thermal|system_fan|cpu_fan)_status\"}", "refId": "A"}],
+          "title": "Synology cooling",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Physical CPU temperature history. No series is expected until node_exporter runs on the Proxmox host.",
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": false, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "line"}}, "max": 100, "min": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 85}]}, "unit": "celsius"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 32},
+          "id": 21,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "node_hwmon_temp_celsius{chip=~\".*(coretemp|k10temp|zenpower|cpu_thermal).*\"}", "legendFormat": "{{instance}} {{chip}} {{sensor}}", "refId": "A"}],
+          "title": "Mini-PC CPU temperature history",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "description": "Temperature of each Synology drive reported by SYNOLOGY-DISK-MIB.",
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": false, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "line"}}, "max": 65, "min": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 45}, {"color": "red", "value": 50}]}, "unit": "celsius"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 32},
+          "id": 22,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [{"expr": "synology_disk_temperature_celsius", "legendFormat": "{{disk_name}} {{disk_model}}", "refId": "A"}],
+          "title": "Synology disk temperature history",
+          "type": "timeseries"
         }
       ],
       "refresh": "30s",
@@ -250,6 +316,6 @@ data:
       "timezone": "browser",
       "title": "Homelab Overview",
       "uid": "homelab-overview",
-      "version": 2,
+      "version": 3,
       "weekStart": ""
     }

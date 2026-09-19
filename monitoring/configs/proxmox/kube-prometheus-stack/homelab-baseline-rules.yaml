@@ -38,3 +38,51 @@ spec:
             description: >-
               PVC {{ $labels.persistentvolumeclaim }} has less than 15% free
               space remaining.
+
+        - alert: HomelabHostCpuTemperatureHigh
+          expr: >-
+            node_hwmon_temp_celsius{
+              chip=~".*(coretemp|k10temp|zenpower|cpu_thermal).*"
+            } > 85
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: CPU temperature is high on {{ $labels.instance }}
+            description: >-
+              Sensor {{ $labels.chip }}/{{ $labels.sensor }} has remained above
+              85 degrees Celsius for 10 minutes.
+
+        - alert: HomelabSynologyTemperatureHigh
+          expr: synology_system_temperature_celsius > 50
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: Synology system temperature is high
+            description: >-
+              The Synology system temperature has remained above 50 degrees
+              Celsius for 15 minutes.
+
+        - alert: HomelabSynologyDiskTemperatureHigh
+          expr: synology_disk_temperature_celsius > 50
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: Synology disk {{ $labels.disk_name }} is hot
+            description: >-
+              Disk {{ $labels.disk_name }} ({{ $labels.disk_model }}) has
+              remained above 50 degrees Celsius for 15 minutes.
+
+        - alert: HomelabSynologyCoolingFailure
+          expr: >-
+            {__name__=~"synology_(thermal|system_fan|cpu_fan)_status"} != 1
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: Synology reports an abnormal cooling status
+            description: >-
+              {{ $labels.__name__ }} has reported a non-normal status for five
+              minutes.

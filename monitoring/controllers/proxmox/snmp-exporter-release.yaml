@@ -1,0 +1,123 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: prometheus-snmp-exporter
+  namespace: monitoring
+spec:
+  dependsOn:
+    - name: kube-prometheus-stack
+  interval: 30m
+  chart:
+    spec:
+      chart: prometheus-snmp-exporter
+      version: '9.17.1'
+      sourceRef:
+        kind: HelmRepository
+        name: kube-prometheus-stack
+        namespace: monitoring
+      interval: 12h
+  values:
+    config: |-
+      auths:
+        synology_v2:
+          community: ${SNMP_COMMUNITY}
+          security_level: noAuthNoPriv
+          auth_protocol: MD5
+          priv_protocol: DES
+          version: 2
+      modules:
+        synology:
+          get:
+            - 1.3.6.1.4.1.6574.1.2.0
+            - 1.3.6.1.4.1.6574.1.4.1.0
+            - 1.3.6.1.4.1.6574.1.4.2.0
+            - 1.3.6.1.4.1.6574.1.8.0
+          walk:
+            - 1.3.6.1.4.1.6574.2.1.1
+          max_repetitions: 25
+          retries: 3
+          timeout: 5s
+          metrics:
+            - name: synology_system_temperature_celsius
+              oid: 1.3.6.1.4.1.6574.1.2
+              type: gauge
+              help: Synology storage system temperature in degrees Celsius.
+            - name: synology_system_fan_status
+              oid: 1.3.6.1.4.1.6574.1.4.1
+              type: gauge
+              help: Synology system fan status, where 1 is normal and 2 is failed.
+            - name: synology_cpu_fan_status
+              oid: 1.3.6.1.4.1.6574.1.4.2
+              type: gauge
+              help: Synology CPU fan status, where 1 is normal and 2 is failed.
+            - name: synology_thermal_status
+              oid: 1.3.6.1.4.1.6574.1.8
+              type: gauge
+              help: Synology thermal status, where 1 is normal and 2 is failed.
+            - name: synology_disk_temperature_celsius
+              oid: 1.3.6.1.4.1.6574.2.1.1.6
+              type: gauge
+              help: Synology drive temperature in degrees Celsius.
+              indexes:
+                - labelname: disk_index
+                  type: gauge
+              lookups:
+                - labels: [disk_index]
+                  labelname: disk_name
+                  oid: 1.3.6.1.4.1.6574.2.1.1.12
+                  type: DisplayString
+                - labels: [disk_index]
+                  labelname: disk_model
+                  oid: 1.3.6.1.4.1.6574.2.1.1.3
+                  type: DisplayString
+            - name: synology_disk_status
+              oid: 1.3.6.1.4.1.6574.2.1.1.5
+              type: gauge
+              help: Synology drive status code reported by DSM.
+              indexes:
+                - labelname: disk_index
+                  type: gauge
+              lookups:
+                - labels: [disk_index]
+                  labelname: disk_name
+                  oid: 1.3.6.1.4.1.6574.2.1.1.12
+                  type: DisplayString
+                - labels: [disk_index]
+                  labelname: disk_model
+                  oid: 1.3.6.1.4.1.6574.2.1.1.3
+                  type: DisplayString
+    extraArgs:
+      - --config.expand-environment-variables
+    envFrom:
+      - secretRef:
+          name: synology-snmp-credentials
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        memory: 128Mi
+    serviceMonitor:
+      enabled: true
+      selector:
+        release: kube-prometheus-stack
+      interval: 30s
+      scrapeTimeout: 15s
+      module:
+        - synology
+      auth:
+        - synology_v2
+      params:
+        - name: synology
+          target: 192.168.1.59
+          labels:
+            release: kube-prometheus-stack
+          interval: 30s
+          scrapeTimeout: 15s
+          additionalMetricsRelabels:
+            device: synology
+      selfMonitor:
+        enabled: true
+        labels:
+          release: kube-prometheus-stack
+
