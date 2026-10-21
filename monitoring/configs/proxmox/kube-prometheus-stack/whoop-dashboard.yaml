@@ -1,0 +1,1995 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: whoop-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  whoop-health.json: |-
+    {
+      "uid": "whoop-health",
+      "title": "WHOOP · Health & Training",
+      "id": null,
+      "version": 8,
+      "schemaVersion": 41,
+      "editable": true,
+      "tags": [
+        "whoop",
+        "health",
+        "training"
+      ],
+      "timezone": "Europe/Amsterdam",
+      "refresh": "",
+      "time": {
+        "from": "now-180d",
+        "to": "now"
+      },
+      "annotations": {
+        "list": []
+      },
+      "links": [],
+      "panels": [
+        {
+          "id": 9,
+          "title": "Recovery & daily load",
+          "type": "row",
+          "gridPos": {
+            "x": 0,
+            "y": 0,
+            "w": 24,
+            "h": 1
+          },
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "none",
+              "noValue": "N/A",
+              "color": {
+                "mode": "palette-classic"
+              }
+            },
+            "overrides": []
+          },
+          "options": {},
+          "collapsed": false,
+          "panels": []
+        },
+        {
+          "id": 10,
+          "title": "Recovery",
+          "type": "timeseries",
+          "gridPos": {
+            "x": 0,
+            "y": 1,
+            "w": 24,
+            "h": 10
+          },
+          "description": "One solid-color bar per recorded cycle. Green ≥67%, yellow 34–66%, red ≤33%. Dashed AVG is a trailing mean of recorded observations, including history before the visible range. Window follows selected range: ≤14 days → 1 day; ≤45 → 3 days; ≤120 → 7 days; ≤240 → 14 days; longer → 30 days. The legend shows the active window. Missing values are not zero-filled.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "noValue": "N/A",
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "bars",
+                "lineInterpolation": "linear",
+                "lineWidth": 0,
+                "fillOpacity": 100,
+                "showPoints": "never",
+                "pointSize": 5,
+                "spanNulls": false,
+                "axisPlacement": "auto",
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                },
+                "gradientMode": "none",
+                "barAlignment": 0,
+                "barWidthFactor": 0.7
+              },
+              "min": 0,
+              "max": 100,
+              "decimals": 0
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Green (≥67%)"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "#16E600"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Yellow (34–66%)"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "#FFDE00"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Red (≤33%)"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "#FF0038"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byFrameRefID",
+                  "options": "B"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "#FFFFFF"
+                    }
+                  },
+                  {
+                    "id": "custom.drawStyle",
+                    "value": "line"
+                  },
+                  {
+                    "id": "custom.lineWidth",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 0
+                  },
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "fill": "dash",
+                      "dash": [
+                        6,
+                        4
+                      ]
+                    }
+                  },
+                  {
+                    "id": "custom.showPoints",
+                    "value": "never"
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "whoop-postgres"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "whoop-postgres"
+              },
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "time_series",
+              "rawSql": "SELECT time AS \"time\",\n  CASE WHEN recovery >= 67 THEN recovery END AS \"Green (≥67%)\",\n  CASE WHEN recovery >= 34 AND recovery < 67 THEN recovery END AS \"Yellow (34–66%)\",\n  CASE WHEN recovery < 34 THEN recovery END AS \"Red (≤33%)\"\nFROM whoop.daily WHERE $__timeFilter(time) AND recovery IS NOT NULL ORDER BY time"
+            },
+            {
+              "refId": "B",
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "whoop-postgres"
+              },
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "time_series",
+              "rawSql": "WITH history AS (\n  SELECT time, avg(recovery) OVER (\n    ORDER BY time RANGE BETWEEN (CASE\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '14 days' THEN 1\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '45 days' THEN 3\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '120 days' THEN 7\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '240 days' THEN 14\n    ELSE 30 END) * interval '24 hours' PRECEDING AND CURRENT ROW\n  ) AS average FROM whoop.daily\n  WHERE time >= $__timeFrom()::timestamptz - (CASE\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '14 days' THEN 1\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '45 days' THEN 3\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '120 days' THEN 7\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '240 days' THEN 14\n    ELSE 30 END) * interval '24 hours'\n    AND time <= $__timeTo()::timestamptz AND recovery IS NOT NULL\n)\nSELECT time AS \"time\", average AS value, 'AVG · ' || (CASE\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '14 days' THEN 1\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '45 days' THEN 3\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '120 days' THEN 7\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '240 days' THEN 14\n    ELSE 30 END)::text || '-day window' AS metric\nFROM history WHERE $__timeFilter(time) ORDER BY time"
+            }
+          ]
+        },
+        {
+          "id": 1002,
+          "title": "Recovery breakdown · selected period",
+          "type": "barchart",
+          "gridPos": {
+            "x": 0,
+            "y": 11,
+            "w": 24,
+            "h": 5
+          },
+          "description": "Counts of recorded cycles by Recovery zone. Each cycle counts once; travel can produce multiple cycles on a local date.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "noValue": "N/A",
+              "color": {
+                "mode": "palette-classic"
+              },
+              "decimals": 0,
+              "min": 0,
+              "custom": {
+                "lineWidth": 0,
+                "fillOpacity": 100,
+                "gradientMode": "none",
+                "axisPlacement": "auto"
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Green (≥67%)"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "#16E600"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Yellow (34–66%)"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "#FFDE00"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Red (≤33%)"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "#FF0038"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "orientation": "horizontal",
+            "xField": "Period",
+            "stacking": "normal",
+            "showValue": "never",
+            "groupWidth": 0.3,
+            "barWidth": 1,
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true,
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "whoop-postgres"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "whoop-postgres"
+              },
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "table",
+              "rawSql": "SELECT 'Recovery' AS \"Period\",\n  count(*) FILTER (WHERE recovery >= 67) AS \"Green (≥67%)\",\n  count(*) FILTER (WHERE recovery >= 34 AND recovery < 67) AS \"Yellow (34–66%)\",\n  count(*) FILTER (WHERE recovery < 34) AS \"Red (≤33%)\"\nFROM whoop.daily WHERE $__timeFilter(time) AND recovery IS NOT NULL"
+            }
+          ]
+        },
+        {
+          "id": 11,
+          "title": "Day Strain",
+          "type": "timeseries",
+          "gridPos": {
+            "x": 0,
+            "y": 16,
+            "w": 24,
+            "h": 8
+          },
+          "description": "WHOOP Day Strain is not the sum of workout Strain. Open cycles remain N/A. Dashed AVG is a trailing mean of recorded observations, including history before the visible range. Window follows selected range: ≤14 days → 1 day; ≤45 → 3 days; ≤120 → 7 days; ≤240 → 14 days; longer → 30 days. The legend shows the active window. Missing values are not zero-filled.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "none",
+              "noValue": "N/A",
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "bars",
+                "lineInterpolation": "linear",
+                "lineWidth": 0,
+                "fillOpacity": 65,
+                "showPoints": "auto",
+                "pointSize": 5,
+                "spanNulls": false,
+                "axisPlacement": "auto",
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              },
+              "min": 0,
+              "max": 21
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byFrameRefID",
+                  "options": "B"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "#FFFFFF"
+                    }
+                  },
+                  {
+                    "id": "custom.drawStyle",
+                    "value": "line"
+                  },
+                  {
+                    "id": "custom.lineWidth",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 0
+                  },
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "fill": "dash",
+                      "dash": [
+                        6,
+                        4
+                      ]
+                    }
+                  },
+                  {
+                    "id": "custom.showPoints",
+                    "value": "never"
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "whoop-postgres"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "whoop-postgres"
+              },
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "time_series",
+              "rawSql": "SELECT time AS \"time\", day_strain AS \"Day Strain\" FROM whoop.daily WHERE $__timeFilter(time) AND true ORDER BY time"
+            },
+            {
+              "refId": "B",
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "whoop-postgres"
+              },
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "time_series",
+              "rawSql": "WITH history AS (\n  SELECT time, avg(day_strain) OVER (\n    ORDER BY time RANGE BETWEEN (CASE\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '14 days' THEN 1\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '45 days' THEN 3\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '120 days' THEN 7\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '240 days' THEN 14\n    ELSE 30 END) * interval '24 hours' PRECEDING AND CURRENT ROW\n  ) AS average FROM whoop.daily\n  WHERE time >= $__timeFrom()::timestamptz - (CASE\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '14 days' THEN 1\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '45 days' THEN 3\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '120 days' THEN 7\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '240 days' THEN 14\n    ELSE 30 END) * interval '24 hours'\n    AND time <= $__timeTo()::timestamptz AND day_strain IS NOT NULL\n)\nSELECT time AS \"time\", average AS value, 'AVG · ' || (CASE\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '14 days' THEN 1\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '45 days' THEN 3\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '120 days' THEN 7\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '240 days' THEN 14\n    ELSE 30 END)::text || '-day window' AS metric\nFROM history WHERE $__timeFilter(time) ORDER BY time"
+            }
+          ]
+        },
+        {
+          "id": 12,
+          "title": "Heart rate variability",
+          "type": "timeseries",
+          "gridPos": {
+            "x": 0,
+            "y": 24,
+            "w": 24,
+            "h": 8
+          },
+          "description": " Dashed AVG is a trailing mean of recorded observations, including history before the visible range. Window follows selected range: ≤14 days → 1 day; ≤45 → 3 days; ≤120 → 7 days; ≤240 → 14 days; longer → 30 days. The legend shows the active window. Missing values are not zero-filled.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "noValue": "N/A",
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "fillOpacity": 8,
+                "showPoints": "auto",
+                "pointSize": 5,
+                "spanNulls": false,
+                "axisPlacement": "auto",
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byFrameRefID",
+                  "options": "B"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "#FFFFFF"
+                    }
+                  },
+                  {
+                    "id": "custom.drawStyle",
+                    "value": "line"
+                  },
+                  {
+                    "id": "custom.lineWidth",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 0
+                  },
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "fill": "dash",
+                      "dash": [
+                        6,
+                        4
+                      ]
+                    }
+                  },
+                  {
+                    "id": "custom.showPoints",
+                    "value": "never"
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "whoop-postgres"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "whoop-postgres"
+              },
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "time_series",
+              "rawSql": "SELECT time AS \"time\", hrv_ms AS \"HRV\" FROM whoop.daily WHERE $__timeFilter(time) AND true ORDER BY time"
+            },
+            {
+              "refId": "B",
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "whoop-postgres"
+              },
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "time_series",
+              "rawSql": "WITH history AS (\n  SELECT time, avg(hrv_ms) OVER (\n    ORDER BY time RANGE BETWEEN (CASE\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '14 days' THEN 1\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '45 days' THEN 3\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '120 days' THEN 7\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '240 days' THEN 14\n    ELSE 30 END) * interval '24 hours' PRECEDING AND CURRENT ROW\n  ) AS average FROM whoop.daily\n  WHERE time >= $__timeFrom()::timestamptz - (CASE\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '14 days' THEN 1\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '45 days' THEN 3\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '120 days' THEN 7\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '240 days' THEN 14\n    ELSE 30 END) * interval '24 hours'\n    AND time <= $__timeTo()::timestamptz AND hrv_ms IS NOT NULL\n)\nSELECT time AS \"time\", average AS value, 'AVG · ' || (CASE\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '14 days' THEN 1\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '45 days' THEN 3\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '120 days' THEN 7\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '240 days' THEN 14\n    ELSE 30 END)::text || '-day window' AS metric\nFROM history WHERE $__timeFilter(time) ORDER BY time"
+            }
+          ]
+        },
+        {
+          "id": 13,
+          "title": "Resting heart rate",
+          "type": "timeseries",
+          "gridPos": {
+            "x": 0,
+            "y": 32,
+            "w": 24,
+            "h": 8
+          },
+          "description": " Dashed AVG is a trailing mean of recorded observations, including history before the visible range. Window follows selected range: ≤14 days → 1 day; ≤45 → 3 days; ≤120 → 7 days; ≤240 → 14 days; longer → 30 days. The legend shows the active window. Missing values are not zero-filled.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bpm",
+              "noValue": "N/A",
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "fillOpacity": 8,
+                "showPoints": "auto",
+                "pointSize": 5,
+                "spanNulls": false,
+                "axisPlacement": "auto",
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byFrameRefID",
+                  "options": "B"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "#FFFFFF"
+                    }
+                  },
+                  {
+                    "id": "custom.drawStyle",
+                    "value": "line"
+                  },
+                  {
+                    "id": "custom.lineWidth",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 0
+                  },
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "fill": "dash",
+                      "dash": [
+                        6,
+                        4
+                      ]
+                    }
+                  },
+                  {
+                    "id": "custom.showPoints",
+                    "value": "never"
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "whoop-postgres"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "whoop-postgres"
+              },
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "time_series",
+              "rawSql": "SELECT time AS \"time\", resting_hr AS \"Resting HR\" FROM whoop.daily WHERE $__timeFilter(time) AND true ORDER BY time"
+            },
+            {
+              "refId": "B",
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "whoop-postgres"
+              },
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "time_series",
+              "rawSql": "WITH history AS (\n  SELECT time, avg(resting_hr) OVER (\n    ORDER BY time RANGE BETWEEN (CASE\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '14 days' THEN 1\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '45 days' THEN 3\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '120 days' THEN 7\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '240 days' THEN 14\n    ELSE 30 END) * interval '24 hours' PRECEDING AND CURRENT ROW\n  ) AS average FROM whoop.daily\n  WHERE time >= $__timeFrom()::timestamptz - (CASE\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '14 days' THEN 1\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '45 days' THEN 3\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '120 days' THEN 7\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '240 days' THEN 14\n    ELSE 30 END) * interval '24 hours'\n    AND time <= $__timeTo()::timestamptz AND resting_hr IS NOT NULL\n)\nSELECT time AS \"time\", average AS value, 'AVG · ' || (CASE\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '14 days' THEN 1\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '45 days' THEN 3\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '120 days' THEN 7\n    WHEN $__timeTo()::timestamptz - $__timeFrom()::timestamptz <= interval '240 days' THEN 14\n    ELSE 30 END)::text || '-day window' AS metric\nFROM history WHERE $__timeFilter(time) ORDER BY time"
+            }
+          ]
+        },
+        {
+          "id": 14,
+          "title": "Sleep",
+          "type": "row",
+          "gridPos": {
+            "x": 0,
+            "y": 40,
+            "w": 24,
+            "h": 1
+          },
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "none",
+              "noValue": "N/A",
+              "color": {
+                "mode": "palette-classic"
+              }
+            },
+            "overrides": []
+          },
+          "options": {},
+          "collapsed": false,
+          "panels": []
+        },
+        {
+          "id": 15,
+          "title": "Main sleep vs sleep need",
+          "type": "timeseries",
+          "gridPos": {
+            "x": 0,
+            "y": 41,
+            "w": 24,
+            "h": 8
+          },
+          "description": "Main sleep only. Sleep need and Sleep debt are distinct WHOOP export metrics.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "dthms",
+              "noValue": "N/A",
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "fillOpacity": 8,
+                "showPoints": "auto",
+                "pointSize": 5,
+                "spanNulls": false,
+                "axisPlacement": "auto",
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Asleep"
+                },
+                "properties": [
+                  {
+                    "id": "custom.drawStyle",
+                    "value": "bars"
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 65
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "whoop-postgres"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "whoop-postgres"
+              },
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "time_series",
+              "rawSql": "SELECT time AS \"time\", asleep_min * 60 AS \"Asleep\", need_min * 60 AS \"Sleep need\" FROM whoop.daily WHERE $__timeFilter(time) AND true ORDER BY time"
+            }
+          ]
+        },
+        {
+          "id": 16,
+          "title": "Main sleep stages",
+          "type": "timeseries",
+          "gridPos": {
+            "x": 0,
+            "y": 49,
+            "w": 24,
+            "h": 8
+          },
+          "description": "Aggregate stage duration per main sleep; no within-night hypnogram is available.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "dthms",
+              "noValue": "N/A",
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "bars",
+                "lineInterpolation": "linear",
+                "lineWidth": 0,
+                "fillOpacity": 80,
+                "showPoints": "auto",
+                "pointSize": 5,
+                "spanNulls": false,
+                "axisPlacement": "auto",
+                "stacking": {
+                  "mode": "normal",
+                  "group": "A"
+                }
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "whoop-postgres"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "whoop-postgres"
+              },
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "time_series",
+              "rawSql": "SELECT time AS \"time\", light_min * 60 AS \"Light\", deep_min * 60 AS \"Deep\", rem_min * 60 AS \"REM\" FROM whoop.daily WHERE $__timeFilter(time) AND true ORDER BY time"
+            }
+          ]
+        },
+        {
+          "id": 17,
+          "title": "Sleep performance, efficiency & consistency",
+          "type": "timeseries",
+          "gridPos": {
+            "x": 0,
+            "y": 57,
+            "w": 24,
+            "h": 8
+          },
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "noValue": "N/A",
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "fillOpacity": 8,
+                "showPoints": "auto",
+                "pointSize": 5,
+                "spanNulls": false,
+                "axisPlacement": "auto",
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              },
+              "min": 0,
+              "max": 100
+            },
+            "overrides": []
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "whoop-postgres"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "whoop-postgres"
+              },
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "time_series",
+              "rawSql": "SELECT time AS \"time\", performance AS \"Performance\", efficiency AS \"Efficiency\", consistency AS \"Consistency\" FROM whoop.daily WHERE $__timeFilter(time) AND true ORDER BY time"
+            }
+          ]
+        },
+        {
+          "id": 18,
+          "title": "Sleep debt",
+          "type": "timeseries",
+          "gridPos": {
+            "x": 0,
+            "y": 65,
+            "w": 24,
+            "h": 8
+          },
+          "description": "WHOOP Sleep debt as exported, without summing across days.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "dthms",
+              "noValue": "N/A",
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "fillOpacity": 8,
+                "showPoints": "auto",
+                "pointSize": 5,
+                "spanNulls": false,
+                "axisPlacement": "auto",
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "whoop-postgres"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "whoop-postgres"
+              },
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "time_series",
+              "rawSql": "SELECT time AS \"time\", debt_min * 60 AS \"Sleep debt\" FROM whoop.daily WHERE $__timeFilter(time) AND true ORDER BY time"
+            }
+          ]
+        },
+        {
+          "id": 19,
+          "title": "Time in bed · sleep schedule",
+          "type": "volkovlabs-echarts-panel",
+          "gridPos": {
+            "x": 0,
+            "y": 73,
+            "w": 24,
+            "h": 11
+          },
+          "description": "One blue interval per main sleep, from local bedtime to local wake time. Dashed lines show selected-period mean bedtime and wake time. Clock values and averages come from PostgreSQL. Time in bed includes awake time; the date is the original local wake date.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "none",
+              "noValue": "N/A",
+              "color": {
+                "mode": "palette-classic"
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "editorMode": "code",
+            "renderer": "canvas",
+            "map": "none",
+            "getOption": "// PostgreSQL supplies integer seconds, local clock labels and period averages.\n// The renderer only draws intervals and formats axis ticks; it has no lookup table.\nconst text = context.grafana.theme.isDark ? '#CCCCDC' : '#202226';\nconst frame = context.panel.data.series.find((s) => s.fields.some((f) => f.name === 'observed_at'));\nif (!frame || !frame.length) {\n  context.panel.chart.clear();\n  return { title: { text: 'No main sleep in selected period', left: 'center', textStyle: { color: text } } };\n}\nconst fields = Object.fromEntries(frame.fields.map((f) => [f.name, f.values]));\nconst rows = Array.from({ length: frame.length }, (_, i) =>\n  Object.fromEntries(Object.entries(fields).map(([name, values]) => [name, values[i]])));\nconst first = rows[0];\nconst clock = (seconds) => {\n  const minutes = Math.floor(seconds / 60);\n  return `${String((Math.floor(minutes / 60) % 24 + 24) % 24).padStart(2, '0')}:${String((minutes % 60 + 60) % 60).padStart(2, '0')}`;\n};\nconst timezone = context.grafana.replaceVariables('${__timezone}');\nconst dates = new Intl.DateTimeFormat('en-GB', { timeZone: timezone, day: '2-digit', month: '2-digit' });\nconst range = context.panel.data.timeRange;\nconst gaps = rows.slice(1).map((r, i) => r.observed_at - rows[i].observed_at).filter((gap) => gap > 0);\nconst widthMs = Math.min(86400000, ...gaps) * 0.72;\nreturn {\n  animation: false,\n  title: { text: `Average time in bed: ${first.avg_time_in_bed_local ?? 'N/A'}`, left: 'center',\n    textStyle: { fontSize: 14, fontWeight: 'normal', color: text } },\n  grid: { top: 44, bottom: 40, left: 72, right: 24 },\n  xAxis: { type: 'time', min: range.from.valueOf(), max: range.to.valueOf(),\n    axisLabel: { formatter: (value) => dates.format(value), hideOverlap: true, color: text }, splitLine: { show: false } },\n  yAxis: { type: 'value', inverse: true, interval: 14400,\n    min: Math.min(68400, Math.floor(Math.min(...rows.map((r) => r.bedtime_seconds)) / 3600) * 3600),\n    max: Math.max(126000, Math.ceil(Math.max(...rows.map((r) => r.wake_seconds)) / 3600) * 3600),\n    axisLabel: { formatter: clock, color: text },\n    splitLine: { lineStyle: { color: 'rgba(128,128,128,0.2)' } } },\n  tooltip: { trigger: 'item', confine: true, formatter: (p) => {\n    const r = rows[p.dataIndex];\n    return `${r.wake_date}<br/>Bedtime: <b>${r.bedtime_local}</b><br/>Wake: <b>${r.wake_local}</b>`\n      + `<br/>Time in bed: <b>${r.time_in_bed_local ?? 'N/A'}</b>`;\n  } },\n  series: [{ type: 'custom', name: 'Main sleep', encode: { x: 0, y: [1, 2] },\n    data: rows.map((r) => [r.observed_at, r.bedtime_seconds, r.wake_seconds]),\n    renderItem: (params, api) => {\n      const start = api.coord([api.value(0), api.value(1)]);\n      const end = api.coord([api.value(0), api.value(2)]);\n      const width = Math.max(1, Math.min(28, api.size([widthMs, 0])[0]));\n      const shape = context.echarts.graphic.clipRectByRect({ x: start[0] - width / 2,\n        y: start[1], width, height: Math.max(1, end[1] - start[1]) }, params.coordSys);\n      return shape && { type: 'rect', shape: { ...shape, r: Math.min(3, width / 4) }, style: { fill: '#8FB7CF' } };\n    },\n    markLine: { silent: true, symbol: 'none', lineStyle: { type: 'dashed', color: text, width: 1.5 },\n      label: { position: 'start', color: '#111217', backgroundColor: '#FFFFFF', padding: [4, 6], borderRadius: 3 },\n      data: [\n        { name: 'Average bedtime', yAxis: first.avg_bedtime_seconds, label: { formatter: first.avg_bedtime_local } },\n        { name: 'Average wake', yAxis: first.avg_wake_seconds, label: { formatter: first.avg_wake_local } },\n      ] },\n  }],\n};\n"
+          },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "whoop-postgres"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "whoop-postgres"
+              },
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "table",
+              "rawSql": "SELECT * FROM whoop.sleep_schedule($__timeFrom()::timestamptz, $__timeTo()::timestamptz)"
+            }
+          ]
+        },
+        {
+          "id": 21,
+          "title": "Training · activity filter applies here",
+          "type": "row",
+          "gridPos": {
+            "x": 0,
+            "y": 84,
+            "w": 24,
+            "h": 1
+          },
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "none",
+              "noValue": "N/A",
+              "color": {
+                "mode": "palette-classic"
+              }
+            },
+            "overrides": []
+          },
+          "options": {},
+          "collapsed": false,
+          "panels": []
+        },
+        {
+          "id": 22,
+          "title": "Weekly activity volume",
+          "type": "barchart",
+          "gridPos": {
+            "x": 0,
+            "y": 85,
+            "w": 24,
+            "h": 12
+          },
+          "description": "Stacked hours per activity, grouped by Monday–Sunday of the original local workout date. Labels show the calendar week; * marks a week only partly inside the selected period. Only workouts inside the selected range are counted. Weeks without workouts are zero. Activity filter applies.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "suffix: h",
+              "noValue": "N/A",
+              "color": {
+                "mode": "palette-classic"
+              },
+              "min": 0,
+              "decimals": 2,
+              "custom": {
+                "lineWidth": 0,
+                "fillOpacity": 100,
+                "gradientMode": "none",
+                "axisPlacement": "auto",
+                "axisLabel": "Hours"
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "orientation": "vertical",
+            "xField": "Week",
+            "stacking": "normal",
+            "showValue": "never",
+            "groupWidth": 0.8,
+            "barWidth": 0.9,
+            "xTickLabelRotation": -90,
+            "xTickLabelSpacing": 0,
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "whoop-postgres"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "whoop-postgres"
+              },
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "table",
+              "rawSql": "WITH filtered AS (\n  SELECT *, date_trunc('week', local_start)::date AS week_start\n  FROM whoop.workouts WHERE $__timeFilter(workout_start) AND activity IN (${activity:sqlstring})\n), bounds AS (\n  SELECT least(date_trunc('week', $__timeFrom()::timestamptz AT TIME ZONE 'Europe/Amsterdam')::date,\n               (SELECT min(week_start) FROM filtered)) AS first_week,\n         greatest(date_trunc('week', $__timeTo()::timestamptz AT TIME ZONE 'Europe/Amsterdam')::date,\n                  (SELECT max(week_start) FROM filtered)) AS last_week\n), weeks AS (\n  SELECT generate_series(first_week::timestamp, last_week::timestamp, interval '1 week')::date AS week_start\n  FROM bounds\n), labelled_weeks AS (\n  SELECT week_start, to_char(week_start, 'DD.MM') || '–' || to_char(week_start + 6, 'DD.MM.YYYY') ||\n    CASE WHEN week_start::timestamp AT TIME ZONE 'Europe/Amsterdam' < $__timeFrom()::timestamptz\n           OR (week_start + 7)::timestamp AT TIME ZONE 'Europe/Amsterdam' > $__timeTo()::timestamptz\n         THEN ' *' ELSE '' END AS week_label FROM weeks\n), activities AS (\n  SELECT DISTINCT activity FROM filtered\n), volume AS (\n  SELECT week_start, activity, sum(duration_min) / 60.0 AS hours FROM filtered GROUP BY 1, 2\n)\nSELECT w.week_label AS \"Week\", a.activity AS \"Activity\", coalesce(v.hours, 0) AS \"Hours\"\nFROM labelled_weeks w CROSS JOIN activities a\nLEFT JOIN volume v ON v.week_start = w.week_start AND v.activity = a.activity\nORDER BY w.week_start, a.activity"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "groupingToMatrix",
+              "options": {
+                "columnField": "Activity",
+                "rowField": "Week",
+                "valueField": "Hours"
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "renameByName": {
+                  "Week\\Activity": "Week"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": 23,
+          "title": "Weekly time in reported HR zones",
+          "type": "barchart",
+          "gridPos": {
+            "x": 0,
+            "y": 97,
+            "w": 24,
+            "h": 12
+          },
+          "description": "Stacked estimated hours in reported zones 1–5 per Monday–Sunday week. * marks a partial week; only workouts inside the selected range are counted. Activity filter applies. Duration × reported percentage: zones often total less than 100%; the remainder is unclassified, not redistributed. All-zero zone records are preserved as reported and do not establish zero physiological load.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "suffix: h",
+              "noValue": "N/A",
+              "color": {
+                "mode": "palette-classic"
+              },
+              "min": 0,
+              "decimals": 2,
+              "custom": {
+                "lineWidth": 0,
+                "fillOpacity": 100,
+                "gradientMode": "none",
+                "axisPlacement": "auto",
+                "axisLabel": "Hours"
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "orientation": "vertical",
+            "xField": "Week",
+            "stacking": "normal",
+            "showValue": "never",
+            "groupWidth": 0.8,
+            "barWidth": 0.9,
+            "xTickLabelRotation": -90,
+            "xTickLabelSpacing": 0,
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "whoop-postgres"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "whoop-postgres"
+              },
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "table",
+              "rawSql": "WITH filtered AS (\n  SELECT *, date_trunc('week', local_start)::date AS week_start\n  FROM whoop.workouts WHERE $__timeFilter(workout_start) AND activity IN (${activity:sqlstring})\n), bounds AS (\n  SELECT least(date_trunc('week', $__timeFrom()::timestamptz AT TIME ZONE 'Europe/Amsterdam')::date,\n               (SELECT min(week_start) FROM filtered)) AS first_week,\n         greatest(date_trunc('week', $__timeTo()::timestamptz AT TIME ZONE 'Europe/Amsterdam')::date,\n                  (SELECT max(week_start) FROM filtered)) AS last_week\n), weeks AS (\n  SELECT generate_series(first_week::timestamp, last_week::timestamp, interval '1 week')::date AS week_start\n  FROM bounds\n), labelled_weeks AS (\n  SELECT week_start, to_char(week_start, 'DD.MM') || '–' || to_char(week_start + 6, 'DD.MM.YYYY') ||\n    CASE WHEN week_start::timestamp AT TIME ZONE 'Europe/Amsterdam' < $__timeFrom()::timestamptz\n           OR (week_start + 7)::timestamp AT TIME ZONE 'Europe/Amsterdam' > $__timeTo()::timestamptz\n         THEN ' *' ELSE '' END AS week_label FROM weeks\n)\nSELECT w.week_label AS \"Week\", coalesce(sum(f.duration_min * f.zone1_pct / 100), 0) / 60.0 AS \"Zone 1\",\n  coalesce(sum(f.duration_min * f.zone2_pct / 100), 0) / 60.0 AS \"Zone 2\",\n  coalesce(sum(f.duration_min * f.zone3_pct / 100), 0) / 60.0 AS \"Zone 3\",\n  coalesce(sum(f.duration_min * f.zone4_pct / 100), 0) / 60.0 AS \"Zone 4\",\n  coalesce(sum(f.duration_min * f.zone5_pct / 100), 0) / 60.0 AS \"Zone 5\"\nFROM labelled_weeks w LEFT JOIN filtered f ON f.week_start = w.week_start\nGROUP BY w.week_start, w.week_label ORDER BY w.week_start"
+            }
+          ]
+        },
+        {
+          "id": 24,
+          "title": "Activity totals",
+          "type": "table",
+          "gridPos": {
+            "x": 0,
+            "y": 109,
+            "w": 24,
+            "h": 10
+          },
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "none",
+              "noValue": "N/A",
+              "color": {
+                "mode": "palette-classic"
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Duration"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "dthms"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Activity"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 135
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Sessions"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 70
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Duration"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 95
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Avg Strain"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 90
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Avg Strain"
+                },
+                "properties": [
+                  {
+                    "id": "decimals",
+                    "value": 1
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "showHeader": true,
+            "cellHeight": "sm"
+          },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "whoop-postgres"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "whoop-postgres"
+              },
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "table",
+              "rawSql": "SELECT activity AS \"Activity\", count(*) AS \"Sessions\",\n  sum(duration_min) * 60 AS \"Duration\", round(avg(strain), 1) AS \"Avg Strain\"\nFROM whoop.workouts WHERE $__timeFilter(workout_start) AND activity IN (${activity:sqlstring})\nGROUP BY activity ORDER BY sum(duration_min) DESC"
+            }
+          ]
+        },
+        {
+          "id": 25,
+          "title": "Workout journal",
+          "type": "table",
+          "gridPos": {
+            "x": 0,
+            "y": 119,
+            "w": 24,
+            "h": 10
+          },
+          "description": "Calories use the export's Energy burned (cal) field. Zones % is the sum of reported zones 1–5, without normalization.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "none",
+              "noValue": "N/A",
+              "color": {
+                "mode": "palette-classic"
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Duration"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "dthms"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Mean HR"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "bpm"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Max HR"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "bpm"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Zones %"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percent"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Start"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 175
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Activity"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 155
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Duration"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 88
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Strain"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 60
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Calories"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 75
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Mean HR"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 80
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Max HR"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 80
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Zones %"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 75
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Strain"
+                },
+                "properties": [
+                  {
+                    "id": "decimals",
+                    "value": 1
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "showHeader": true,
+            "cellHeight": "sm",
+            "footer": {
+              "show": false
+            }
+          },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "whoop-postgres"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "whoop-postgres"
+              },
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "table",
+              "rawSql": "SELECT workout_start AS \"Start\", activity AS \"Activity\",\n  duration_min * 60 AS \"Duration\", strain AS \"Strain\", energy_cal AS \"Calories\",\n  average_hr AS \"Mean HR\", max_hr AS \"Max HR\",\n  zone1_pct + zone2_pct + zone3_pct + zone4_pct + zone5_pct AS \"Zones %\"\nFROM whoop.workouts WHERE $__timeFilter(workout_start) AND activity IN (${activity:sqlstring}) ORDER BY workout_start DESC"
+            }
+          ]
+        },
+        {
+          "id": 26,
+          "title": "Additional physiology",
+          "type": "row",
+          "gridPos": {
+            "x": 0,
+            "y": 129,
+            "w": 24,
+            "h": 1
+          },
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "none",
+              "noValue": "N/A",
+              "color": {
+                "mode": "palette-classic"
+              }
+            },
+            "overrides": []
+          },
+          "options": {},
+          "collapsed": false,
+          "panels": []
+        },
+        {
+          "id": 27,
+          "title": "Respiratory rate",
+          "type": "timeseries",
+          "gridPos": {
+            "x": 0,
+            "y": 130,
+            "w": 24,
+            "h": 7
+          },
+          "description": "Recorded WHOOP observations. Respiratory rate is breaths/min. No clinical alert thresholds are configured.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "none",
+              "noValue": "N/A",
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "fillOpacity": 8,
+                "showPoints": "auto",
+                "pointSize": 5,
+                "spanNulls": false,
+                "axisPlacement": "auto",
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "whoop-postgres"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "whoop-postgres"
+              },
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "time_series",
+              "rawSql": "SELECT time AS \"time\", respiratory_rate AS \"Respiration\" FROM whoop.daily WHERE $__timeFilter(time) AND true ORDER BY time"
+            }
+          ]
+        },
+        {
+          "id": 28,
+          "title": "Skin temperature",
+          "type": "timeseries",
+          "gridPos": {
+            "x": 0,
+            "y": 137,
+            "w": 24,
+            "h": 7
+          },
+          "description": "Recorded WHOOP observations. Respiratory rate is breaths/min. No clinical alert thresholds are configured.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "celsius",
+              "noValue": "N/A",
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "fillOpacity": 8,
+                "showPoints": "auto",
+                "pointSize": 5,
+                "spanNulls": false,
+                "axisPlacement": "auto",
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "whoop-postgres"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "whoop-postgres"
+              },
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "time_series",
+              "rawSql": "SELECT time AS \"time\", skin_temp_c AS \"Skin temperature\" FROM whoop.daily WHERE $__timeFilter(time) AND true ORDER BY time"
+            }
+          ]
+        },
+        {
+          "id": 29,
+          "title": "Blood oxygen",
+          "type": "timeseries",
+          "gridPos": {
+            "x": 0,
+            "y": 144,
+            "w": 24,
+            "h": 7
+          },
+          "description": "Recorded WHOOP observations. Respiratory rate is breaths/min. No clinical alert thresholds are configured.",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "noValue": "N/A",
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "fillOpacity": 8,
+                "showPoints": "auto",
+                "pointSize": 5,
+                "spanNulls": false,
+                "axisPlacement": "auto",
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "whoop-postgres"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "whoop-postgres"
+              },
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "time_series",
+              "rawSql": "SELECT time AS \"time\", spo2 AS \"SpO₂\" FROM whoop.daily WHERE $__timeFilter(time) AND true ORDER BY time"
+            }
+          ]
+        },
+        {
+          "id": 30,
+          "title": "Explore relationships",
+          "type": "row",
+          "gridPos": {
+            "x": 0,
+            "y": 151,
+            "w": 24,
+            "h": 1
+          },
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "none",
+              "noValue": "N/A",
+              "color": {
+                "mode": "palette-classic"
+              }
+            },
+            "overrides": []
+          },
+          "options": {},
+          "collapsed": true,
+          "panels": [
+            {
+              "id": 31,
+              "title": "Recovery → same-cycle load",
+              "type": "xychart",
+              "gridPos": {
+                "x": 0,
+                "y": 152,
+                "w": 24,
+                "h": 9
+              },
+              "description": "X = morning Recovery %, Y = Day Strain in that same cycle. Observational association; no causal inference.",
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "none",
+                  "noValue": "N/A",
+                  "color": {
+                    "mode": "palette-classic"
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Recovery %"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "percent"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "options": {
+                "seriesMapping": "auto",
+                "show": "points",
+                "pointSize": {
+                  "fixed": 5
+                },
+                "legend": {
+                  "showLegend": false
+                },
+                "tooltip": {
+                  "mode": "single"
+                }
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "whoop-postgres"
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "whoop-postgres"
+                  },
+                  "rawQuery": true,
+                  "editorMode": "code",
+                  "format": "table",
+                  "rawSql": "SELECT recovery AS \"Recovery %\", day_strain AS \"Day Strain\"\nFROM whoop.daily WHERE $__timeFilter(time) AND recovery IS NOT NULL AND day_strain IS NOT NULL ORDER BY time"
+                }
+              ]
+            },
+            {
+              "id": 32,
+              "title": "Load → next-cycle recovery",
+              "type": "xychart",
+              "gridPos": {
+                "x": 0,
+                "y": 161,
+                "w": 24,
+                "h": 9
+              },
+              "description": "X = Day Strain, Y = Recovery of the next chronological cycle. Both observations must be within the selected period. Observational association; no causal inference.",
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "percent",
+                  "noValue": "N/A",
+                  "color": {
+                    "mode": "palette-classic"
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Day Strain"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "none"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "options": {
+                "seriesMapping": "auto",
+                "show": "points",
+                "pointSize": {
+                  "fixed": 5
+                },
+                "legend": {
+                  "showLegend": false
+                },
+                "tooltip": {
+                  "mode": "single"
+                }
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "whoop-postgres"
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "whoop-postgres"
+                  },
+                  "rawQuery": true,
+                  "editorMode": "code",
+                  "format": "table",
+                  "rawSql": "WITH history AS (\n  SELECT time, day_strain, lead(recovery) OVER (ORDER BY cycle_start) AS next_recovery,\n         lead(time) OVER (ORDER BY cycle_start) AS next_time FROM whoop.daily\n)\nSELECT day_strain AS \"Day Strain\", next_recovery AS \"Next recovery %\" FROM history\nWHERE $__timeFilter(time) AND $__timeFilter(next_time) AND day_strain IS NOT NULL AND next_recovery IS NOT NULL ORDER BY time"
+                }
+              ]
+            },
+            {
+              "id": 33,
+              "title": "Main sleep → recovery",
+              "type": "xychart",
+              "gridPos": {
+                "x": 0,
+                "y": 170,
+                "w": 24,
+                "h": 9
+              },
+              "description": "X = main sleep hours, Y = Recovery recorded after that sleep. Observational association; no causal inference.",
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "percent",
+                  "noValue": "N/A",
+                  "color": {
+                    "mode": "palette-classic"
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Sleep hours"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "h"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "options": {
+                "seriesMapping": "auto",
+                "show": "points",
+                "pointSize": {
+                  "fixed": 5
+                },
+                "legend": {
+                  "showLegend": false
+                },
+                "tooltip": {
+                  "mode": "single"
+                }
+              },
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "whoop-postgres"
+              },
+              "targets": [
+                {
+                  "refId": "A",
+                  "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "whoop-postgres"
+                  },
+                  "rawQuery": true,
+                  "editorMode": "code",
+                  "format": "table",
+                  "rawSql": "SELECT asleep_min / 60.0 AS \"Sleep hours\", recovery AS \"Recovery %\"\nFROM whoop.daily WHERE $__timeFilter(time) AND asleep_min IS NOT NULL AND recovery IS NOT NULL ORDER BY time"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "templating": {
+        "list": [
+          {
+            "name": "activity",
+            "label": "Activity (training panels)",
+            "type": "query",
+            "datasource": {
+              "type": "grafana-postgresql-datasource",
+              "uid": "whoop-postgres"
+            },
+            "query": "SELECT DISTINCT activity FROM whoop.workouts ORDER BY activity",
+            "refresh": 1,
+            "multi": true,
+            "includeAll": true,
+            "options": [],
+            "current": {
+              "text": "All",
+              "value": "$__all",
+              "selected": true
+            },
+            "sort": 1
+          }
+        ]
+      }
+    }

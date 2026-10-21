@@ -4,3 +4,8 @@ temp
 .env
 .DS_Store
 synology/media-automation/README.md
+/monitoring/whoop/__pycache__/
+/monitoring/whoop/private/
+/monitoring/whoop/*.csv
+/monitoring/whoop/*.dump*
+/monitoring/whoop/*.sql

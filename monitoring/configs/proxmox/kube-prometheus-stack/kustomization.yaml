@@ -7,3 +7,4 @@ resources:
   - homelab-applications-dashboard.yaml
   - homelab-application-probes.yaml
   - homelab-application-probe-rules.yaml
+  - whoop-dashboard.yaml

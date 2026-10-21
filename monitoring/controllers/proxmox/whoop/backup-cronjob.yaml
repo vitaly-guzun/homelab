@@ -1,0 +1,80 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: whoop-backup
+spec:
+  schedule: "30 3 * * *"
+  timeZone: Europe/Amsterdam
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 21600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 1800
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: whoop-backup
+        spec:
+          automountServiceAccountToken: false
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+            fsGroup: 999
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: backup
+              image: postgres:17-bookworm
+              command: [/bin/sh, /scripts/backup.sh]
+              env:
+                - name: PGHOST
+                  value: whoop-postgres.monitoring.svc.cluster.local
+                - name: PGDATABASE
+                  value: whoop
+                - name: PGUSER
+                  value: whoop_grafana
+                - name: PGCONNECT_TIMEOUT
+                  value: "15"
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: whoop-postgres-credentials
+                      key: reader-password
+              resources:
+                requests:
+                  cpu: 25m
+                  memory: 32Mi
+                  ephemeral-storage: 64Mi
+                limits:
+                  cpu: 500m
+                  memory: 256Mi
+                  ephemeral-storage: 1Gi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: [ALL]
+              volumeMounts:
+                - name: script
+                  mountPath: /scripts
+                  readOnly: true
+                - name: backups
+                  mountPath: /backups
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: script
+              configMap:
+                name: whoop-backup-script
+            - name: backups
+              nfs:
+                server: 192.168.1.59
+                path: /volume1/backups
+            - name: tmp
+              emptyDir:
+                sizeLimit: 1Gi

@@ -1,5 +1,11 @@
 # Monitoring
 
+## WHOOP health and training
+
+`WHOOP · Health & Training` (`/d/whoop-health`) uses a dedicated PostgreSQL
+history store and a manual CSV importer. Setup, validation, data conventions,
+and backup instructions are in the [WHOOP runbook](whoop/README.md).
+
 Flux installs `kube-prometheus-stack` from `monitoring/controllers` and applies
 dashboards and custom rules from `monitoring/configs` after the controllers are
 ready.

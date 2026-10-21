@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: whoop-grafana-datasource
+    namespace: monitoring
+    labels:
+        grafana_datasource: "1"
+type: Opaque
+stringData:
+    whoop.yaml: ENC[AES256_GCM,data:x7aQrLmiHLLU5sEs/Qp8ilXFC3IgHLqYDLuTxalPIx0jXzuzm4HwzI7kH00k/x0NrpUq7x43SDBBp6dM23iLAtSMNof7Yaz29uphSsYIuNJMk1Wu6Zz7wpaUEyRpeOxlC/eR+JXPflaq5mR7a08P/i901Di+q0m35XXwQtrlYM3mifTblTvwo3dDV9ywAwy2lFwm8eBDJn9iVv93gT0uwSrvk+1p/ZOoiKLcS/3zKHLZjCeNclFBxiDT0opKnAfvlaMS12f63mAEeDQbyWMTE/iI3euVwrwksJ6MPGOiAO1Vbv3P7kZZrZzmX14ff0lUuEu0wMNmCU1y5NdGPcxtsBUtb2PG6dTP/Kk5ZQdfIls920aAkcSQpwRfjDrt09lN2gmLhFjJcIS+sogtTZc4zBgHLgNNVlBI3SOS1ukr9fj1wTO7xA8MZkr4SzjD5Mp7xA1XJcZKYWFIFashnTEfl4sB2IbQdp6Amzc01ePeUe0aSkuGEAxrtqesZ3ce9narspYaXUWOHGVrG4jwH3hl3zIcdIfqkZaTDms6W0hb3sL/4Tx7nOuehnvMEyJcycKHNZMmFLI9VQx8I30Lf1lSlJD6WHWk006tQzUcPVeOYpAG/SvKCTbz+7y7S6t9YUJdb/3sjX29S+E=,iv:7IYNQjWiUsU0lOhn7finjxLTWvYxNHQ0kKR6yyXWQtY=,tag:B3zxuw6ArEUtnLtpCxVGAw==,type:str]
+sops:
+    age:
+        - recipient: age1xuyqesapjwt8fhejc8cmtf2d2nwkmf2mqj0h4u0nke48lflc84mq9jsfs4
+          enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSA3TTFyRlAyNzBxT0N1dlcv
+            a0cwZFpyTkhTR21CUVN1R2RPNGxFOGFtS2dvCjhWakEvMnJHeWpqRCt0ZFBVUkZm
+            UDdzODhtQ2pEOElZYVhXR0s1VEUxWmcKLS0tIFBkcWp1Y1VHUU9nbmMwSlNOVmhW
+            ZUdFQ1NSd0MwRTN4VDlYc2pkbDVzYWcKPpVHqkg2obmQfFhfmhM5KmFLT6F5/ZBk
+            LvQweXHHsH+bdDIr2AeMTNJ7uJ/3V3BzRkbeEZA8WBZ6NuKWa/MiBw==
+            -----END AGE ENCRYPTED FILE-----
+    lastmodified: "2026-10-20T15:20:53Z"
+    mac: ENC[AES256_GCM,data:gO3NSe/4+Ve49Y2z7TMJKd0fSTDF/6kxT4Mv2TasL3de21sxr5u2DGu7jNHqa4rZpPRvHpJDBP7cRotGYa4Z67Jx4rCTCKySEjYW0IdC384NHM+avUtMCrnAHogN2PTGVS+lm1WrN0vFxLDSRx0NBa9TgLeDx2o1xB8HfIFgK7w=,iv:2K4sFBz/aQjE1kdfXsuhM03Ku+3cuzmVQvUkYgMfDyQ=,tag:kKuPL6gKFZDIPUU2MWZSiQ==,type:str]
+    encrypted_regex: ^(data|stringData)$
+    version: 3.10.2

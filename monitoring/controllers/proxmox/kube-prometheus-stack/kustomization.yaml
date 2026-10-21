@@ -21,5 +21,10 @@ patches:
           userKey: admin-user
           passwordKey: admin-password
       - op: add
+        path: /spec/values/grafana/grafana.ini
+        value:
+          plugins:
+            preinstall_sync: volkovlabs-echarts-panel@7.2.2
+      - op: add
         path: /spec/values/prometheus/prometheusSpec/storageSpec/volumeClaimTemplate/spec/storageClassName
         value: local-path

@@ -5,3 +5,4 @@ resources:
   - snmp-exporter-release.yaml
   - synology-snmp-credentials.yaml
   - blackbox-exporter-release.yaml
+  - whoop
